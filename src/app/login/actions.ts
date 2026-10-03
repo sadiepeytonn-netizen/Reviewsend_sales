@@ -21,7 +21,15 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) return { error: "That email and password don't match. Ask your admin if you need a reset.", email };
+  if (error) {
+    if (error.code === "email_not_confirmed") {
+      return { error: "This account hasn't been confirmed yet. Ask your admin to check it in Supabase.", email };
+    }
+    if (error.code === "user_banned") {
+      return { error: "Your account is turned off. Ask your admin to turn it back on.", email };
+    }
+    return { error: "That email and password don't match. Ask your admin if you need a reset.", email };
+  }
 
   redirect("/");
 }
