@@ -116,6 +116,12 @@ The client app's A2P 10DLC texting registration lives in the MAIN Twilio account
 - SHAKEN/STIR / Voice Integrity on sales numbers only after Twilio support confirms
   it won't affect the A2P brand. CNAM / Branded Calling: on hold.
 
+## Open decisions
+- **Inbound callbacks** (prospects calling the sales numbers back): undecided.
+  Options: forward to a phone, voicemail in the CRM routed to the last rep who
+  called, forward-then-voicemail (recommended), or ring the rep's browser.
+  Until decided, the numbers have no voice configuration for incoming calls.
+
 ## Build order
 
 1. ✅ Project setup, logins, roles, users, commission plans
