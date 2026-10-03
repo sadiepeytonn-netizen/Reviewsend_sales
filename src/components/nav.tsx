@@ -8,6 +8,7 @@ import {
   Home,
   ListChecks,
   PhoneCall,
+  ShieldBan,
   Upload,
   Users,
   type LucideIcon,
@@ -19,7 +20,8 @@ type NavItem = { href: string; label: string; icon: LucideIcon; soon?: string };
 const ADMIN_NAV: NavItem[] = [
   { href: "/admin", label: "Overview", icon: Home },
   { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/leads", label: "Leads", icon: Upload, soon: "Step 2" },
+  { href: "/admin/leads", label: "Leads", icon: Upload },
+  { href: "/admin/dnc", label: "Do Not Call", icon: ShieldBan },
   { href: "/dialer", label: "Dialer", icon: PhoneCall, soon: "Step 3" },
   { href: "/calendar", label: "Calendar", icon: CalendarDays, soon: "Step 4" },
   { href: "/admin/stats", label: "Stats", icon: ChartColumn, soon: "Step 5" },

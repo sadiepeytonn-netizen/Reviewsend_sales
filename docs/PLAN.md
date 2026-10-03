@@ -28,8 +28,15 @@ Twilio subaccount. Planned address: `sales.reviewsend.io`.
 - CSV import with column mapping (HubSpot export first, lead vendors later).
 - Duplicates: matched by normalized phone number, and by business name + city.
   A duplicate **fills in blank fields** on the existing lead and never overwrites data.
-- Time zone from area code first, then state. EAST list = Eastern + Central;
-  WEST list = Mountain, Pacific, Alaska, Hawaii.
+- Time zone (and state, if the file has none) from the phone's area code, using
+  Google's phone-number data. Split area codes (e.g. 850 Pensacola vs. Tallahassee)
+  are resolved by exchange. Falls back to the State column. EAST list = Eastern +
+  Central; WEST list = Mountain, Pacific, Alaska, Hawaii. Admin can change a lead's list.
+- Column matching on every import (vendor headers vary); common names are guessed
+  automatically and the last choice is remembered per set of headers.
+- Only valid US phone numbers are imported; rows without a business name or phone
+  are skipped and listed in a downloadable report.
+- An import can be undone (removes the leads it added that haven't been called).
 - Do Not Call list is permanent (the database refuses deletes). Checked on import
   and before every dial. National DNC registry check: not in v1.
 - **Ownership:** leads are shared until a rep books an appointment or makes a sale.
@@ -91,7 +98,7 @@ one, and all dashboard numbers are calculated from it.
 ## Build order
 
 1. ✅ Project setup, logins, roles, users, commission plans
-2. Lead import, dedupe, lists, Do Not Call
+2. ✅ Lead import, dedupe, lists, Do Not Call
 3. Dialer + dispositions + notes (test with one rep)
 4. Calendar
 5. Event tracking + dashboards

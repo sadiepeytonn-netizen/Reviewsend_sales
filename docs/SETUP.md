@@ -132,3 +132,34 @@ This does **not** affect `reviewsend.io` or your client app. It only adds the `s
 
 To remove someone's access, open their page and click **Turn off account**. Their
 history is kept, and you can turn them back on any time.
+
+---
+
+# Step 2 setup (lead import)
+
+One database update, then you're ready to import.
+
+1. In **Supabase** → your **reviewsend-sales** project → **SQL Editor** → **+ New query**.
+2. Open `supabase/migrations/0002_lead_import.sql` on GitHub (same branch as before),
+   click **Copy raw file**, paste it into the SQL Editor, and click **Run**.
+   You should see **"Success. No rows returned."** Run it only once.
+3. Vercel updates the website by itself. Once the newest deployment says **Ready**,
+   **Leads** and **Do Not Call** appear in the left menu.
+
+## Importing leads
+
+1. Export your leads as a **CSV** file:
+   - Google Sheets: **File → Download → Comma-separated values (.csv)**
+   - Excel: **File → Save As →** choose **CSV**
+   - HubSpot: export the list/view, then open it and save as CSV if it came as Excel.
+2. In the CRM: **Leads → Import leads → Choose a CSV file**.
+3. Type the **Lead source** (e.g. `HubSpot`, or the vendor's name).
+4. Check the **Match the columns** table. Business name and Phone are required;
+   set anything you don't need to **Don't import**. The CRM remembers your choices
+   for files with the same columns.
+5. Click **Import**. When it finishes you'll see how many were added, merged as
+   duplicates, skipped for Do Not Call, or skipped for problems. **Download report**
+   gives you every row with its result.
+
+Made a mistake? **Leads → Import history → Undo** removes the leads that import
+added, as long as nobody has called them yet.
