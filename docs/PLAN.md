@@ -106,6 +106,16 @@ Reps see their first-month commission; residuals are visible to admin only.
 Every call and status change is logged to a permanent `events` table from day
 one, and all dashboard numbers are calculated from it.
 
+## Twilio safety rules (protect the client app's texting)
+The client app's A2P 10DLC texting registration lives in the MAIN Twilio account
+(brand: Isaiah B Enterprises LLC). The CRM must never put it at risk:
+- The CRM uses only the **ReviewSend CRM subaccount**, with an API key created
+  inside that subaccount (it cannot reach the main account).
+- Never edit the main account's Trust Hub profiles, brands, or campaigns.
+- The CRM makes voice calls only. No SMS from sales numbers (not in v1).
+- SHAKEN/STIR / Voice Integrity on sales numbers only after Twilio support confirms
+  it won't affect the A2P brand. CNAM / Branded Calling: on hold.
+
 ## Build order
 
 1. ✅ Project setup, logins, roles, users, commission plans
