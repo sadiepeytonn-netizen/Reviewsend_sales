@@ -78,7 +78,12 @@ Keep this tab open for part B.
    | `SUPABASE_SECRET_KEY` | Secret key |
 
 6. Click **Deploy** and wait for the confetti (2–3 minutes).
-7. Click the preview to open your site (an address like `reviewsend-sales.vercel.app`).
+   - If the project page says **No Production Deployment**, nothing has been
+     built yet: go to **Deployments** → **Create Deployment** (or the **⋯** menu),
+     type the branch name shown on the Overview page, and click **Create Deployment**.
+7. Open your site: on the project's **Overview** page, click the address under
+   **Domains**. Vercel picks this address, and it often has extra letters
+   (e.g. `reviewsend-sales-abc123.vercel.app`), so don't type it from memory.
    Sign in with the email and password from part A4.
 
 If you ever change an environment variable later: Vercel → your project →
