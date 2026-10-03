@@ -5,6 +5,8 @@ import { STATUS_LABELS, STATUS_TONES, type LeadStatus } from "@/lib/leads";
 import { formatPhone } from "@/lib/phone";
 import { createClient } from "@/lib/supabase/server";
 import { Badge, Button, Card, Input, PageHeader, Select } from "@/components/ui";
+import { ConfirmButton } from "@/components/confirm-button";
+import { recycleExhausted } from "./actions";
 
 const PAGE_SIZE = 50;
 
@@ -30,9 +32,10 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
   const page = Math.max(1, Number.parseInt(one(sp.page) || "1", 10) || 1);
 
   const supabase = await createClient();
-  const [{ data: inv }, { data: sources }] = await Promise.all([
+  const [{ data: inv }, { data: sources }, { count: exhausted }] = await Promise.all([
     supabase.rpc("lead_inventory"),
     supabase.rpc("lead_source_stats"),
+    supabase.from("leads").select("id", { count: "exact", head: true }).eq("status", "exhausted").is("owner_id", null),
   ]);
   const inventory = (inv ?? []) as InventoryRow[];
   const sourceStats = (sources ?? []) as SourceRow[];
@@ -112,6 +115,19 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
         <div className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
           {noList.total.toLocaleString()} lead{noList.total === 1 ? "" : "s"} couldn&apos;t be placed on EAST or WEST (unknown area code and no state).{" "}
           <Link href={linkFor({ list: "none", page: 1 })} className="font-medium underline">Review them</Link> and set the list by hand.
+        </div>
+      )}
+
+      {(exhausted ?? 0) > 0 && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white px-4 py-3 text-sm text-gray-700 ring-1 ring-gray-200">
+          <span>
+            <b>{(exhausted ?? 0).toLocaleString()}</b> lead{exhausted === 1 ? "" : "s"} hit the no-answer limit and left the pool.
+          </span>
+          <form action={recycleExhausted}>
+            <ConfirmButton variant="secondary" message="Put all exhausted leads back in the dialing pool (attempt count resets)?">
+              Recycle them
+            </ConfirmButton>
+          </form>
         </div>
       )}
 

@@ -9,6 +9,8 @@ import { Badge, Button, Card, PageHeader, Select } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm-button";
 import { markLeadDnc, setLeadList } from "./actions";
 import { NoteForm } from "./note-form";
+import { loadLeadContext } from "../../../dialer/actions";
+import { PastCalls } from "../../../dialer/lead-panels";
 
 type Lead = {
   id: string; business_name: string; contact_name: string | null; phone_e164: string | null; phone_raw: string | null;
@@ -35,6 +37,7 @@ export default async function LeadPage({ params }: PageProps<"/admin/leads/[id]"
   const lead = leadData as unknown as Lead;
   const notes = (notesData ?? []) as unknown as Note[];
 
+  const calls = (await loadLeadContext(id))?.calls ?? [];
   const site = lead.website && !/^https?:\/\//i.test(lead.website) ? `https://${lead.website}` : lead.website;
 
   return (
@@ -104,6 +107,7 @@ export default async function LeadPage({ params }: PageProps<"/admin/leads/[id]"
         </div>
 
         <div className="space-y-6">
+          <PastCalls calls={calls} allowDownload />
           <Card>
             <h2 className="mb-3 font-medium text-gray-900">Dialing list</h2>
             <form action={setLeadList} className="flex gap-2">

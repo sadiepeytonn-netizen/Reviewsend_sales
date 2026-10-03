@@ -56,6 +56,17 @@ Twilio subaccount. Planned address: `sales.reviewsend.io`.
 - Pause with reason (lunch, break, meeting, training, other).
 - Florida caller ID numbers (start with 2–3), registered in Twilio Trust Hub.
 
+### Dialer details (built in step 3)
+- Reps can also call their own leads (appointments, follow-ups) from **My leads**;
+  No Answer on an owned lead keeps it with the rep instead of returning it to the pool.
+- "Pick an outcome without calling" exists for obvious bad numbers or a phone problem;
+  dial stats count only real calls.
+- Keypad (for phone menus), mute, "pause after this call", and a default appointment
+  of the next weekday at 10am.
+- Caller ID: a number with the lead's area code if one exists, otherwise a random one
+  of the company's numbers.
+- Admin can recycle exhausted leads back into the pool from the Leads page.
+
 ### Recordings
 - Kept 1 year.
 - Reps can listen to their own calls. Admin can listen to and download any call.
@@ -99,7 +110,7 @@ one, and all dashboard numbers are calculated from it.
 
 1. ✅ Project setup, logins, roles, users, commission plans
 2. ✅ Lead import, dedupe, lists, Do Not Call
-3. Dialer + dispositions + notes (test with one rep)
+3. ✅ Dialer + dispositions + notes (test with one rep)
 4. Calendar
 5. Event tracking + dashboards
 6. Stripe payments + commission

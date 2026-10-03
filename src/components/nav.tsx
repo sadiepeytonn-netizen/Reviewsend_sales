@@ -22,15 +22,15 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/leads", label: "Leads", icon: Upload },
   { href: "/admin/dnc", label: "Do Not Call", icon: ShieldBan },
-  { href: "/dialer", label: "Dialer", icon: PhoneCall, soon: "Step 3" },
+  { href: "/dialer", label: "Dialer", icon: PhoneCall },
   { href: "/calendar", label: "Calendar", icon: CalendarDays, soon: "Step 4" },
   { href: "/admin/stats", label: "Stats", icon: ChartColumn, soon: "Step 5" },
 ];
 
 const REP_NAV: NavItem[] = [
   { href: "/dashboard", label: "My day", icon: Home },
-  { href: "/dialer", label: "Dialer", icon: PhoneCall, soon: "Step 3" },
-  { href: "/my-leads", label: "My leads", icon: ListChecks, soon: "Step 3" },
+  { href: "/dialer", label: "Dialer", icon: PhoneCall },
+  { href: "/my-leads", label: "My leads", icon: ListChecks },
   { href: "/calendar", label: "Calendar", icon: CalendarDays, soon: "Step 4" },
 ];
 

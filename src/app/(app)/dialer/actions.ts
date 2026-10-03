@@ -1,0 +1,152 @@
+"use server";
+
+import { z } from "zod";
+import { requireUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { twilioConfig, voiceToken } from "@/lib/twilio";
+import type { LeadStatus } from "@/lib/leads";
+
+export type DialerLead = {
+  id: string; business_name: string; contact_name: string | null; phone_e164: string | null;
+  email: string | null; website: string | null; address: string | null; city: string | null; state: string | null;
+  category: string | null; google_rating: number | null; review_count: number | null; google_profile_url: string | null;
+  import_notes: string | null; timezone: string | null; list: "EAST" | "WEST" | null; status: LeadStatus;
+  attempt_count: number; last_called_at: string | null; owner_id: string | null;
+};
+export type DialerNote = { id: string; body: string; created_at: string; author: string };
+export type DialerCall = {
+  id: string; started_at: string; duration_seconds: number | null; disposition: string | null;
+  recording_sid: string | null; rep: string;
+};
+export type LeadContext = { lead: DialerLead; notes: DialerNote[]; calls: DialerCall[] };
+
+const FRIENDLY: Record<string, string> = {
+  not_allowed: "Your account can't do that. Try signing in again.",
+  not_your_lead: "This lead isn't yours anymore. It may have timed out. Loading the next one.",
+  do_not_call: "This number is on the Do Not Call list and can't be dialed.",
+  outside_calling_hours: "It's outside calling hours where this lead is (8am–8pm their time).",
+  no_phone: "This lead has no phone number.",
+  lead_not_found: "That lead no longer exists.",
+  appointment_time_required: "Pick a date and time for the appointment.",
+  appointment_in_past: "That appointment time is in the past.",
+  pause_reason_required: "Pick a reason for the pause.",
+  call_not_found: "Couldn't match that call. Try again.",
+};
+
+function friendly(message: string | undefined): string {
+  const key = Object.keys(FRIENDLY).find((k) => message?.includes(k));
+  return key ? FRIENDLY[key] : `Something went wrong: ${message ?? "unknown error"}`;
+}
+
+export async function getVoiceToken(): Promise<{ token?: string; identity?: string; error?: string }> {
+  const me = await requireUser();
+  const c = twilioConfig();
+  if (!c.ready) return { error: `Calling isn't set up yet (missing ${c.missing.join(", ")}).` };
+  return { token: voiceToken(me.id), identity: me.id };
+}
+
+export async function loadLeadContext(leadId: string): Promise<LeadContext | null> {
+  await requireUser();
+  if (!z.uuid().safeParse(leadId).success) return null;
+  const supabase = await createClient();
+  const [{ data: lead }, { data: notes }, { data: calls }] = await Promise.all([
+    supabase.from("leads").select("*").eq("id", leadId).maybeSingle(),
+    supabase.from("lead_notes").select("id, body, created_at, author:profiles(full_name, email)").eq("lead_id", leadId).order("created_at", { ascending: false }),
+    supabase.from("calls").select("id, started_at, duration_seconds, disposition, recording_sid, rep:profiles(full_name)").eq("lead_id", leadId).order("started_at", { ascending: false }).limit(20),
+  ]);
+  if (!lead) return null;
+  type NoteRow = { id: string; body: string; created_at: string; author: { full_name: string; email: string } | null };
+  type CallRow = Omit<DialerCall, "rep"> & { rep: { full_name: string } | null };
+  return {
+    lead: lead as DialerLead,
+    notes: ((notes ?? []) as unknown as NoteRow[]).map((n) => ({
+      id: n.id, body: n.body, created_at: n.created_at, author: n.author?.full_name || n.author?.email || "Someone",
+    })),
+    calls: ((calls ?? []) as unknown as CallRow[]).map((c) => ({ ...c, rep: c.rep?.full_name ?? "" })),
+  };
+}
+
+export async function claimNext(list: "EAST" | "WEST"): Promise<{ context?: LeadContext | null; error?: string }> {
+  await requireUser();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("claim_next_lead", { p_list: z.enum(["EAST", "WEST"]).parse(list) });
+  if (error) return { error: friendly(error.message) };
+  if (!data) return { context: null };
+  return { context: await loadLeadContext((data as { id: string }).id) };
+}
+
+export async function releaseLead(leadId: string) {
+  await requireUser();
+  const supabase = await createClient();
+  await supabase.rpc("release_lead", { p_lead: leadId });
+}
+
+export async function heartbeat() {
+  await requireUser();
+  const supabase = await createClient();
+  await supabase.rpc("presence_heartbeat");
+}
+
+const presenceSchema = z.object({
+  status: z.enum(["idle", "ready", "on_call", "wrap_up", "paused", "offline"]),
+  reason: z.enum(["lunch", "break", "meeting", "training", "other"]).nullable().optional(),
+  list: z.enum(["EAST", "WEST"]).nullable().optional(),
+});
+
+export async function setPresence(input: z.infer<typeof presenceSchema>): Promise<{ error?: string }> {
+  await requireUser();
+  const p = presenceSchema.parse(input);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_presence", { p_status: p.status, p_reason: p.reason ?? null, p_list: p.list ?? null });
+  return error ? { error: friendly(error.message) } : {};
+}
+
+export async function startCall(leadId: string): Promise<{ callId?: string; error?: string }> {
+  await requireUser();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("start_call", { p_lead: z.uuid().parse(leadId) });
+  if (error) return { error: friendly(error.message) };
+  return { callId: (data as { call_id: string }).call_id };
+}
+
+const disposeSchema = z.object({
+  leadId: z.uuid(),
+  callId: z.uuid().nullable(),
+  disposition: z.enum(["no_answer", "not_interested", "appointment_set", "demo_completed", "sold", "do_not_call", "bad_number"]),
+  note: z.string().max(5000).optional(),
+  appointmentStart: z.iso.datetime({ offset: true }).nullable().optional(),
+  appointmentMinutes: z.number().int().min(5).max(480).nullable().optional(),
+});
+
+export async function dispose(input: z.infer<typeof disposeSchema>): Promise<{ error?: string; status?: string }> {
+  await requireUser();
+  const parsed = disposeSchema.safeParse(input);
+  if (!parsed.success) return { error: "Something's missing. Check the form." };
+  const d = parsed.data;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("dispose_lead", {
+    p_lead: d.leadId,
+    p_disposition: d.disposition,
+    p_call: d.callId,
+    p_note: d.note ?? null,
+    p_appt_start: d.appointmentStart ?? null,
+    p_appt_minutes: d.appointmentMinutes ?? null,
+  });
+  if (error) return { error: friendly(error.message) };
+  return { status: (data as { status: string }).status };
+}
+
+export async function addLeadNote(leadId: string, body: string): Promise<{ note?: DialerNote; error?: string }> {
+  const me = await requireUser();
+  const text = body.trim();
+  if (!text) return { error: "Type a note first." };
+  if (text.length > 5000) return { error: "That note is too long." };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("lead_notes")
+    .insert({ lead_id: z.uuid().parse(leadId), author_id: me.id, body: text })
+    .select("id, body, created_at")
+    .single();
+  if (error) return { error: "Couldn't save the note." };
+  return { note: { ...data, author: me.full_name || me.email } };
+}

@@ -163,3 +163,95 @@ One database update, then you're ready to import.
 
 Made a mistake? **Leads → Import history → Undo** removes the leads that import
 added, as long as nobody has called them yet.
+
+---
+
+# Step 3 setup (dialer + Twilio)
+
+About 30 minutes. Do the parts in order. **Copy each Twilio value straight into
+Vercel. Never paste them into the Claude chat.**
+
+## 3A. Database update
+Same as before: open `supabase/migrations/0003_dialer.sql` on GitHub → **Copy raw file**
+→ Supabase **SQL Editor** → **+ New query** → paste → **Run** (once).
+
+## 3B. Twilio: a separate subaccount for sales calls
+1. Sign in at **https://console.twilio.com** with your existing Twilio login.
+2. Your main account must be **upgraded** (not a free trial). Trial accounts can only
+   call phone numbers you've verified and play a "trial account" message. If the top of
+   the console says *Trial*, click **Upgrade** and add billing.
+3. Open the **Admin** menu (top right) → **Account management** → **Subaccounts**
+   (or type "Subaccounts" in the console search bar).
+4. Click **Create new account** (or **Create subaccount**), name it `ReviewSend Sales`,
+   and create it.
+5. Switch into the new subaccount: click the account name at the top left and choose
+   **ReviewSend Sales**. Everything below happens **inside this subaccount**, so your
+   SMS/review texting account isn't touched.
+
+## 3C. Account SID and Auth Token
+1. On the subaccount's home page, find **Account Info**.
+2. In **Vercel → your project → Settings → Environment Variables**, add:
+
+   | Name | Value | Type |
+   |---|---|---|
+   | `TWILIO_ACCOUNT_SID` | Account SID (starts with `AC`) | Config |
+   | `TWILIO_AUTH_TOKEN` | Auth Token (click **Show** / copy) | **Secret** |
+
+## 3D. API key (lets the browser make calls)
+1. In Twilio: **Admin** (top right) → **Account management** → **API keys & tokens**
+   (search "API keys" if you don't see it).
+2. Click **Create API key**. Name: `sales-crm`. Region: **United States (US1)**.
+   Key type: **Standard**. Click **Create**.
+3. Twilio shows the key **once**. Add to Vercel:
+
+   | Name | Value | Type |
+   |---|---|---|
+   | `TWILIO_API_KEY_SID` | SID (starts with `SK`) | Config |
+   | `TWILIO_API_KEY_SECRET` | Secret | **Secret** |
+
+## 3E. Buy Florida phone numbers (caller ID)
+1. In Twilio: **Phone Numbers → Manage → Buy a number**.
+2. Country **United States**. In the search box choose **Number** → type an area code
+   (e.g. `954`, `305`, `561`, `407`, `813`), and tick **Voice** under capabilities.
+3. Click **Buy** on a number you like, and confirm. Repeat for 2–3 numbers.
+4. Add to Vercel (all numbers in one value, `+1` then 10 digits, separated by commas,
+   no spaces):
+
+   | Name | Value | Type |
+   |---|---|---|
+   | `TWILIO_CALLER_IDS` | e.g. `+19545551234,+13055556789` | Config |
+
+   The CRM uses a number with the same area code as the lead when it has one.
+
+## 3F. TwiML App (tells Twilio where the CRM lives)
+1. In Twilio: **Voice → Manage → TwiML apps** (search "TwiML apps" if needed).
+2. Click **Create new TwiML App**.
+   - Friendly name: `Sales CRM dialer`
+   - **Voice Request URL**: your site address + `/api/webhooks/twilio/voice`, e.g.
+     `https://sales.reviewsend.io/api/webhooks/twilio/voice`
+     (or your `….vercel.app` address if the domain isn't set up yet). Method **HTTP POST**.
+   - Leave Messaging blank. Click **Create** / **Save**.
+3. Open the app you just made and copy its **SID** (starts with `AP`). Add to Vercel:
+
+   | Name | Value | Type |
+   |---|---|---|
+   | `TWILIO_TWIML_APP_SID` | SID (starts with `AP`) | Config |
+
+   If you later switch to `sales.reviewsend.io`, come back and update this URL.
+
+## 3G. Redeploy and test
+1. Vercel → **Deployments** → newest → **⋯** → **Redeploy**. Wait for **Ready**.
+2. Make a test lead with **your own cell number**: a CSV with a `Company name` and
+   `Phone Number` column, imported with lead source `Test`.
+3. Open **Dialer** → **EAST** (or WEST, where your number lands) → **Start dialing**.
+   The browser asks to use your microphone. Click **Allow**.
+4. Click **Call**. Your cell should ring from one of the new numbers; when you answer
+   you'll hear the recording notice, then the rep side. Hang up, pick an outcome.
+5. Calls only go out **8am–8pm in the lead's time zone**.
+
+## Recommended within the first week: caller ID reputation
+New numbers that make lots of calls get labeled "Spam Likely" quickly. In Twilio,
+open **Trust Hub** and complete:
+1. **Customer Profile** (your business details); approval can take a few days.
+2. **SHAKEN/STIR Trust**: add your numbers so calls are "verified".
+3. **CNAM**: shows "ReviewSend" as the caller name on many phones.

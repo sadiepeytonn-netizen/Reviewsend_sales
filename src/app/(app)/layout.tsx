@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { KeyRound, LogOut } from "lucide-react";
 import { requireUser } from "@/lib/auth";
+import { Heartbeat } from "@/components/heartbeat";
 import { Nav } from "@/components/nav";
 import { signOut } from "@/app/login/actions";
 
@@ -13,6 +14,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
+      <Heartbeat />
       <aside className="flex shrink-0 flex-col border-b border-gray-200 bg-white px-4 py-4 md:w-60 md:border-r md:border-b-0 md:py-6">
         <div className="mb-6 flex items-center gap-2 px-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">
