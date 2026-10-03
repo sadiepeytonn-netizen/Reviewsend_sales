@@ -28,7 +28,11 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
     if (error.code === "user_banned") {
       return { error: "Your account is turned off. Ask your admin to turn it back on.", email };
     }
-    return { error: "That email and password don't match. Ask your admin if you need a reset.", email };
+    if (error.code === "invalid_credentials") {
+      return { error: "That email and password don't match. Ask your admin if you need a reset.", email };
+    }
+    // Anything else is a setup or connection problem; show the real reason.
+    return { error: `Sign-in problem: ${error.message}${error.code ? ` (${error.code})` : ""}`, email };
   }
 
   redirect("/");
