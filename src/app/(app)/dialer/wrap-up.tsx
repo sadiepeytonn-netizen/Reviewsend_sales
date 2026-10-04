@@ -111,7 +111,7 @@ export function WrapUp({
 
       {choice === "sold" && (
         <p className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-900 ring-1 ring-green-200">
-          Great work! The Stripe payment step is coming soon. For now this marks the lead as sold and yours.
+          Great work! If you haven&apos;t yet, use <b>Take payment</b> above first. The sale only counts once Stripe confirms the payment.
         </p>
       )}
 

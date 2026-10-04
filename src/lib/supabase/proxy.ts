@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 
 // Paths anyone can open without logging in.
-const PUBLIC_PATHS = ["/login", "/api/webhooks", "/api/calendar", "/api/cron"];
+const PUBLIC_PATHS = ["/login", "/api/webhooks", "/api/calendar", "/api/cron", "/pay"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

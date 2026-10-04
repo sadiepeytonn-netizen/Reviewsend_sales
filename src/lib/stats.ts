@@ -66,8 +66,12 @@ export function duration(seconds: number | null | undefined): string {
   return `${s}s`;
 }
 
-export const money = (n: number | null | undefined) =>
-  n == null ? "—" : Number(n).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+export const money = (n: number | null | undefined) => {
+  if (n == null) return "—";
+  const v = Number(n);
+  const digits = Number.isInteger(v) ? 0 : 2; // $499 but $249.50
+  return v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits });
+};
 
 export type RepStats = {
   rep_id: string; rep_name: string; dials: number; contacts: number; answered_calls: number; talk_seconds: number;

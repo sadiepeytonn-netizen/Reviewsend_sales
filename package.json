@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^10.0.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
     "@twilio/voice-sdk": "^2.18.5",
@@ -21,6 +22,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
+    "stripe": "^23.0.0",
     "twilio": "^6.1.2",
     "zod": "^4.6.5"
   },

@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Call, Device } from "@twilio/voice-sdk";
-import { Coffee, Grid3x3, Mic, MicOff, Pause, Phone, PhoneOff, Play, Square } from "lucide-react";
+import { Coffee, CreditCard, Grid3x3, Mic, MicOff, Pause, Phone, PhoneOff, Play, Square, X } from "lucide-react";
+import type { PaymentSetup } from "@/lib/payment-setup";
+import { PaymentFlow } from "../payments/payment-flow";
 import { Alert, Badge, Button, Card, Select } from "@/components/ui";
 import { formatPhone } from "@/lib/phone";
 import { STATUS_LABELS, STATUS_TONES, timezoneLabel } from "@/lib/leads";
@@ -51,9 +53,11 @@ export function Dialer({
   callingReady,
   callingProblem,
   singleLead,
+  payments,
 }: {
   callingReady: boolean;
   callingProblem?: string;
+  payments: PaymentSetup;
   /** Calling one of the rep's own leads (from My leads), not the queue. */
   singleLead?: LeadContext;
 }) {
@@ -70,6 +74,8 @@ export function Dialer({
   const [pauseReason, setPauseReason] = useState<PauseReason>("break");
   const [pausedAt, setPausedAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  // The payment panel opens over the dialer so the call stays connected.
+  const [paying, setPaying] = useState(false);
 
   const deviceRef = useRef<Device | null>(null);
   const callRef = useRef<Call | null>(null);
@@ -431,6 +437,13 @@ export function Dialer({
                   </>
                 )}
               </div>
+              {(phase === "lead" || onCall || phase === "wrapup") && (
+                <div className="mt-4">
+                  <Button variant="secondary" onClick={() => setPaying(true)} className="ring-green-300 text-green-800">
+                    <CreditCard className="h-4 w-4" /> Take payment
+                  </Button>
+                </div>
+              )}
               {onCall && showKeypad && (
                 <div className="mt-4 grid w-48 grid-cols-3 gap-2">
                   {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((k) => (
@@ -466,6 +479,23 @@ export function Dialer({
           </div>
         </div>
       )}
+
+      {paying && lead && <PaymentModal lead={lead} payments={payments} onClose={() => setPaying(false)} />}
+    </div>
+  );
+}
+
+function PaymentModal({ lead, payments, onClose }: { lead: LeadContext["lead"]; payments: PaymentSetup; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/30 p-4">
+      <Card className="mx-auto my-6 max-w-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">Take payment: {lead.business_name}</h2>
+          <button onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-100" aria-label="Close"><X className="h-5 w-5" /></button>
+        </div>
+        <p className="mb-4 text-sm text-gray-500">Your call stays connected while this is open.</p>
+        <PaymentFlow {...payments} lead={lead} onDone={onClose} />
+      </Card>
     </div>
   );
 }

@@ -285,3 +285,56 @@ brand-new bookings can take a while to appear there; the CRM calendar is always 
       `CRON_SECRET` = that password, Type **Secret**.
    3. **Deployments** → newest → **⋯** → **Redeploy**.
    Vercel sends this password to the CRM by itself every day; you never need to type it again.
+
+---
+
+# Step 6 setup (Stripe payments + commission)
+
+About 15 minutes. Paste every key straight into Vercel. **Never into the Claude chat.**
+All Vercel settings below go in **Vercel → your project → Settings → Environment Variables**.
+
+## 6A. Database
+Copy `supabase/migrations/0006_payments.sql` from GitHub → Supabase **SQL Editor** →
+**+ New query** → paste → **Run** (once; choose **Run without RLS** if asked).
+
+## 6B. Product IDs (already created)
+| Name | Value | Type |
+|---|---|---|
+| `STRIPE_PRODUCT_IDS` | `prod_VNfmqHIeAF2M7i,prod_VNflV49933M4m8` | Config |
+
+(The CRM reads both names from Stripe: the one with "Setup" in its name is used for setup fees.)
+
+## 6C. Stripe keys
+1. Stripe → **Developers** → **API keys**.
+2. **Publishable key** (starts `pk_live_`): add as `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (Config).
+3. Secret key, recommended as a **restricted key** so the CRM can only do what it needs:
+   **Create restricted key** → name `sales-crm` → set these to the access shown, leave everything else **None**:
+   - Customers: **Write** · Payment Methods: **Write** · Products: **Read** · Prices: **Write**
+   - Subscriptions: **Write** · Invoices: **Write** · Checkout Sessions: **Write**
+
+   Click **Create key**, then copy it (starts `rk_live_`) into `STRIPE_SECRET_KEY` (**Secret**).
+
+## 6D. Webhook (Stripe tells the CRM when a payment goes through)
+1. Stripe → **Developers** → **Webhooks** → **Add destination** (or **Add endpoint**).
+2. Events: `invoice.paid`, `invoice.payment_failed`, `customer.subscription.deleted`,
+   `checkout.session.completed`.
+3. If asked for an **API version**, choose the **latest** one.
+4. Endpoint URL: `https://sales.reviewsend.io/api/webhooks/stripe`
+5. Create it, then click **Reveal** under **Signing secret** (starts `whsec_`) and add it as
+   `STRIPE_WEBHOOK_SECRET` (**Secret**).
+
+Your old pay site's webhook stays as it is. Each site ignores the other's payments.
+
+## 6E. Emailing payment links (optional)
+If you have a **Resend** account (the old pay site used it):
+- `RESEND_API_KEY` = your Resend API key (**Secret**)
+- `PAYMENT_FROM_EMAIL` = e.g. `ReviewSend <billing@reviewsend.io>` (Config). The domain must be
+  verified in Resend.
+
+Without these, reps still get a **Copy link** button to send the payment link themselves.
+
+## 6F. Redeploy and test
+1. Vercel → **Deployments** → newest → **⋯** → **Redeploy**.
+2. **Payments → New payment**, using your own card for the smallest allowed amount.
+3. You should see **Paid ✓** and the Calendly booking. Then, in Stripe, **refund** that payment and
+   **cancel** the subscription (or use **Cancel** on the CRM's Payments page).

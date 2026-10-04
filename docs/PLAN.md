@@ -105,7 +105,26 @@ All in Eastern time, for the chosen range (today / this week / this month / cust
 - Live floor refreshes every 10 seconds; a rep with no check-in for 2 minutes shows Offline.
 - Recordings older than 365 days are deleted from Twilio daily (Vercel Cron, `CRON_SECRET`).
 
-### Payments
+### Payments (built in step 6)
+- **Payments** page in the menu for everyone, plus **Take payment** on the dialer (opens over
+  the dialer so the call stays connected). Admin can credit any rep.
+- Payment happens while the client is on the phone: **enter card now** (Stripe card box, plain-
+  English decline reasons) or **payment link** (emailed via Resend if set up, or copied).
+- Prices are negotiated per deal: setup $0–599, monthly $199–699 (editable in settings).
+  First charge = setup + first month; then the monthly price automatically.
+- Products: every sale is filed under the two CRM products (monthly + setup fee).
+- After **Paid ✓**, the rep books onboarding in Calendly (`settings.onboarding_url`) before
+  hanging up.
+- A sale counts when Stripe confirms the first payment (webhook), which also gives the
+  first-month commission from the rep's plan at the time of sale, marks the lead Sold, and
+  gives it to the rep. Each later monthly payment adds the residual. Failed payment → past
+  due; canceled subscription → canceled (residuals stop).
+- Admin: cancel a subscription, record a sale paid outside the CRM (first-month commission
+  only), and the **Commissions** page per month with "Mark paid out".
+- The old pay site keeps running for existing clients; it and the CRM ignore each other's
+  Stripe events.
+
+### Payments (original notes)
 - The CRM takes over the payment step. On **Sold**, the rep enters setup fee and
   monthly price, then either takes the card now (Stripe Checkout) or sends a
   Stripe invoice. The Stripe customer/subscription is tagged with the rep and lead.
@@ -155,7 +174,7 @@ The client app's A2P 10DLC texting registration lives in the MAIN Twilio account
 3. ✅ Dialer + dispositions + notes (test with one rep)
 4. ✅ Calendar
 5. ✅ Event tracking + dashboards
-6. Stripe payments + commission
+6. ✅ Stripe payments + commission
 
 ## Not in v1
 SMS to prospects, email, scripts, AI, lead scoring, auto lead generation,
