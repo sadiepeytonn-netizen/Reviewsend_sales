@@ -39,7 +39,7 @@ export default async function RepStatsPage({ params, searchParams }: PageProps<"
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi hero label="Sales" value={r.sales} sub={`Close rate ${pct(r.sales, r.sales + r.pitched_no_sale)} · ${money(r.mrr)} MRR`} />
-        <Kpi label="Dials" value={r.dials} sub={`${r.contacts} contacts · ${pct(r.contacts, r.dials)}`} />
+        <Kpi label="Dials" value={r.dials} sub={`${r.contacts} contacts · ${pct(r.contacts, r.dials)} · ${r.manual_dials} manual`} />
         <Kpi label="Appointments" value={r.appointments} sub={`${pct(r.appointments, r.contacts)} of contacts · show rate ${pct(r.showed, r.showed + r.missed)}`} />
         <Kpi label="Commission" value={money(r.first_month_commission)} sub={`Residuals ${money(r.residual_commission)}`} />
       </div>

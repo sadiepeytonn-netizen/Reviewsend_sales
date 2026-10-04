@@ -55,7 +55,7 @@ export default async function MyLeadsPage() {
                   <tr key={l.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2">
                       <Link href={`/leads/${l.id}`} className="font-medium text-gray-900 hover:underline">{l.business_name}</Link>
-                      <p className="text-xs text-gray-500">{[l.contact_name, [l.city, l.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}</p>
+                      <p className="text-xs text-gray-500">{[l.contact_name ? `Owner: ${l.contact_name}` : null, [l.city, l.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}</p>
                     </td>
                     <td className="whitespace-nowrap px-4 py-2 text-gray-600">{formatPhone(l.phone_e164)}</td>
                     <td className="px-4 py-2"><Badge tone={STATUS_TONES[l.status]}>{STATUS_LABELS[l.status]}</Badge></td>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Mic, MicOff, PhoneCall, PhoneOff } from "lucide-react";
+import { formatPhone } from "@/lib/phone";
 import { mmss, PAUSE_LABELS, useClock, useDialer } from "./dialer-provider";
 
 /** Shown on every page except the dialer while a call or dialing session is going. */
@@ -12,7 +13,7 @@ export function CallBar() {
   const now = useClock(d.callState === "open");
   if (pathname.startsWith("/dialer") || d.phase === "idle") return null;
 
-  const name = d.ctx?.lead.business_name;
+  const name = d.ctx?.lead.contact_name || d.ctx?.lead.business_name || (d.manualPhone ? formatPhone(d.manualPhone) : "");
   if (d.phase === "calling") {
     return (
       <div className="sticky top-0 z-40 -mx-4 mb-4 flex flex-wrap items-center gap-3 bg-green-600 px-4 py-2 text-sm text-white shadow md:-mx-10 md:px-10">
@@ -39,6 +40,7 @@ export function CallBar() {
       </div>
     );
   }
+  if (d.mode === "manual") return null;
   return (
     <div className="sticky top-0 z-40 -mx-4 mb-4 flex flex-wrap items-center gap-3 bg-brand-600 px-4 py-2 text-sm text-white shadow md:-mx-10 md:px-10">
       <span>

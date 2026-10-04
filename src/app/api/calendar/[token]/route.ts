@@ -51,7 +51,7 @@ export async function GET(req: Request, ctx: RouteContext<"/api/calendar/[token]
       end: new Date(a.ends_at),
       summary: `Demo: ${lead?.business_name ?? "Lead"}${phone ? ` · ${phone}` : ""}${who}${outcome}`,
       description: [
-        lead?.contact_name && `Contact: ${lead.contact_name}`,
+        lead?.contact_name && `Owner: ${lead.contact_name}`,
         phone && `Phone: ${phone}`,
         [lead?.city, lead?.state].filter(Boolean).join(", "),
         lead && `Open in CRM: ${origin}/leads/${lead.id}`,

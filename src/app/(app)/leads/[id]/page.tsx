@@ -36,7 +36,7 @@ export default async function LeadPage({ params }: PageProps<"/leads/[id]">) {
       </Link>
       <PageHeader
         title={lead.business_name}
-        description={`${formatPhone(lead.phone_e164)} · ${[lead.contact_name, [lead.city, lead.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")} · ${timezoneLabel(lead.timezone)}`}
+        description={`${formatPhone(lead.phone_e164)} · ${[lead.contact_name ? `Owner: ${lead.contact_name}` : "Owner unknown", [lead.city, lead.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")} · ${timezoneLabel(lead.timezone)}`}
         actions={
           <div className="flex items-center gap-3">
             <Badge tone={STATUS_TONES[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>

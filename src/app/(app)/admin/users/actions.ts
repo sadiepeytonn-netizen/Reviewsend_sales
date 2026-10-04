@@ -181,3 +181,18 @@ export async function saveCommissionPlan(_prev: ActionState, formData: FormData)
   revalidatePath(`/admin/users/${userId}`);
   return { success: "New plan saved. It applies to sales from now on." };
 }
+
+const coachingSchema = z.object({
+  userId: z.uuid(),
+  field: z.enum(["can_listen", "can_whisper", "can_barge"]),
+  value: z.enum(["true", "false"]),
+});
+
+/** Turn a rep's listen / whisper / barge permission on or off. */
+export async function setCoaching(formData: FormData) {
+  await requireAdmin();
+  const p = coachingSchema.parse({ userId: formData.get("userId"), field: formData.get("field"), value: formData.get("value") });
+  const supabase = createAdminClient();
+  await supabase.from("profiles").update({ [p.field]: p.value === "true" }).eq("id", p.userId);
+  revalidatePath(`/admin/users/${p.userId}`);
+}

@@ -338,3 +338,15 @@ Without these, reps still get a **Copy link** button to send the payment link th
 2. **Payments → New payment**, using your own card for the smallest allowed amount.
 3. You should see **Paid ✓** and the Calendly booking. Then, in Stripe, **refund** that payment and
    **cancel** the subscription (or use **Cancel** on the CRM's Payments page).
+
+---
+
+# Update: keypad, calendar booking, owner name, coaching switches
+
+## Database
+Copy `supabase/migrations/0007_keypad_calendar_owner.sql` from GitHub → Supabase **SQL Editor** →
+**+ New query** → paste → **Run** (once; choose **Run without RLS** if asked).
+No new keys or Vercel settings are needed. Vercel deploys the new code by itself.
+
+Until this file is run, the keypad and calendar booking show an error, and the
+coaching switches don't appear on the user pages.

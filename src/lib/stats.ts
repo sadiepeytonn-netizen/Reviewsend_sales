@@ -74,7 +74,7 @@ export const money = (n: number | null | undefined) => {
 };
 
 export type RepStats = {
-  rep_id: string; rep_name: string; dials: number; contacts: number; answered_calls: number; talk_seconds: number;
+  rep_id: string; rep_name: string; dials: number; manual_dials: number; contacts: number; answered_calls: number; talk_seconds: number;
   logged_in_seconds: number; on_call_seconds: number; ready_seconds: number; wrap_up_seconds: number; idle_seconds: number;
   paused_seconds: number; paused_lunch: number; paused_break: number; paused_meeting: number; paused_training: number;
   paused_other: number; avg_gap_seconds: number | null; appointments: number; demos: number; showed: number; missed: number;
@@ -87,7 +87,7 @@ export function teamTotals(rows: RepStats[]): RepStats {
   const gaps = rows.filter((r) => r.avg_gap_seconds != null);
   return {
     rep_id: "team", rep_name: "Team",
-    dials: sum("dials"), contacts: sum("contacts"), answered_calls: sum("answered_calls"), talk_seconds: sum("talk_seconds"),
+    dials: sum("dials"), manual_dials: sum("manual_dials"), contacts: sum("contacts"), answered_calls: sum("answered_calls"), talk_seconds: sum("talk_seconds"),
     logged_in_seconds: sum("logged_in_seconds"), on_call_seconds: sum("on_call_seconds"), ready_seconds: sum("ready_seconds"),
     wrap_up_seconds: sum("wrap_up_seconds"), idle_seconds: sum("idle_seconds"), paused_seconds: sum("paused_seconds"),
     paused_lunch: sum("paused_lunch"), paused_break: sum("paused_break"), paused_meeting: sum("paused_meeting"),
@@ -105,5 +105,6 @@ export function normalize(r: RepStats): RepStats {
   for (const [k, v] of Object.entries(r)) {
     if (k !== "rep_id" && k !== "rep_name" && v != null) out[k] = Number(v);
   }
+  out.manual_dials = Number(r.manual_dials ?? 0); // missing until migration 0007 is run
   return out as RepStats;
 }

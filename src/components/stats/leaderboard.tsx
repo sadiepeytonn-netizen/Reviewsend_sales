@@ -17,6 +17,7 @@ const ratio = (a: number, b: number) => (b > 0 ? a / b : null);
 
 const COLS: Col[] = [
   { key: "dials", label: "Dials", value: (r) => r.dials, show: (r) => r.dials.toLocaleString() },
+  { key: "manual_dials", label: "Manual dials", value: (r) => r.manual_dials, show: (r) => r.manual_dials.toLocaleString() },
   { key: "contacts", label: "Contacts", value: (r) => r.contacts, show: (r) => r.contacts.toLocaleString() },
   { key: "contact_rate", label: "Contact %", value: (r) => ratio(r.contacts, r.dials), show: (r) => pct(r.contacts, r.dials) },
   { key: "talk", label: "Talk time", value: (r) => r.talk_seconds, show: (r) => duration(r.talk_seconds) },

@@ -31,6 +31,8 @@ const FRIENDLY: Record<string, string> = {
   appointment_in_past: "That appointment time is in the past.",
   pause_reason_required: "Pick a reason for the pause.",
   call_not_found: "Couldn't match that call. Try again.",
+  save_lead_first: "Save this number as a lead first (business name), then pick the outcome.",
+  business_name_required: "Enter the business name.",
 };
 
 function friendly(message: string | undefined): string {
@@ -149,4 +151,91 @@ export async function addLeadNote(leadId: string, body: string): Promise<{ note?
     .single();
   if (error) return { error: "Couldn't save the note." };
   return { note: { ...data, author: me.full_name || me.email } };
+}
+
+// ---------------------------------------------------------------------------
+// Keypad (manual) dialing
+// ---------------------------------------------------------------------------
+
+export type LookupResult =
+  | { status: "lead"; phone: string; context: LeadContext }
+  | { status: "new"; phone: string }
+  | { status: "blocked"; error: string };
+
+/** What is this number? Pool leads get held for the caller; others' clients are blocked. */
+export async function lookupNumber(raw: string): Promise<LookupResult> {
+  await requireUser();
+  const { normalizePhone } = await import("@/lib/phone");
+  const phone = normalizePhone(raw);
+  if (!phone) return { status: "blocked", error: "That isn't a valid US phone number." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("lookup_number", { p_phone: phone });
+  if (error) return { status: "blocked", error: friendly(error.message) };
+  const r = data as { status: string; lead_id?: string };
+  if (r.status === "dnc") return { status: "blocked", error: "That number is on the Do Not Call list." };
+  if (r.status === "other_rep") return { status: "blocked", error: "That number belongs to another rep's client." };
+  if (r.status === "busy") return { status: "blocked", error: "Another rep has that lead on their dialer right now." };
+  if (r.status === "lead" && r.lead_id) {
+    const context = await loadLeadContext(r.lead_id);
+    if (context) return { status: "lead", phone, context };
+  }
+  return { status: "new", phone };
+}
+
+export async function startManualCall(phone: string, leadId: string | null): Promise<{ callId?: string; error?: string }> {
+  await requireUser();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("start_manual_call", { p_phone: phone, p_lead: leadId });
+  if (error) return { error: friendly(error.message) };
+  return { callId: (data as { call_id: string }).call_id };
+}
+
+/** After a keypad call to an unknown number: save it as a lead (never a duplicate). */
+export async function saveCallAsLead(input: {
+  callId: string | null; phone: string; businessName: string; ownerName: string; email?: string;
+}): Promise<{ context?: LeadContext; error?: string }> {
+  await requireUser();
+  const { locate, listForTimezone } = await import("@/lib/phone");
+  if (!input.businessName.trim()) return { error: "Enter the business name." };
+  const where = locate(input.phone);
+  const supabase = await createClient();
+  const { data: leadId, error } = await supabase.rpc("find_or_create_lead", {
+    p_phone: input.phone,
+    p_business: input.businessName,
+    p_owner: input.ownerName,
+    p_email: input.email ?? "",
+    p_city: "",
+    p_state: where.state ?? "",
+    p_timezone: where.timezone ?? "",
+    p_list: listForTimezone(where.timezone),
+  });
+  if (error) {
+    if (error.message.includes("other_rep")) return { error: "That number belongs to another rep's client." };
+    return { error: friendly(error.message) };
+  }
+  if (input.callId) {
+    const { error: linkError } = await supabase.rpc("link_call_to_lead", { p_call: input.callId, p_lead: leadId as string });
+    if (linkError) return { error: friendly(linkError.message) };
+  }
+  const context = await loadLeadContext(leadId as string);
+  return context ? { context } : { error: "Saved, but couldn't load the lead." };
+}
+
+/** Fill in or fix the business owner's name. */
+export async function setOwnerName(leadId: string, name: string): Promise<{ error?: string }> {
+  await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_owner_name", { p_lead: z.uuid().parse(leadId), p_name: name.slice(0, 200) });
+  return error ? { error: friendly(error.message) } : {};
+}
+
+/** Keypad call to an unknown number that reached nobody: record it without making a lead. */
+export async function closeManualCall(callId: string, disposition: "no_answer" | "bad_number"): Promise<{ error?: string }> {
+  await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("close_manual_call", {
+    p_call: z.uuid().parse(callId),
+    p_disposition: z.enum(["no_answer", "bad_number"]).parse(disposition),
+  });
+  return error ? { error: friendly(error.message) } : {};
 }

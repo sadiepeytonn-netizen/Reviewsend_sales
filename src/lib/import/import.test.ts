@@ -13,10 +13,19 @@ describe("guessMapping", () => {
     expect(m["Industry"]).toBe("category");
     expect(m["Record ID"]).toBe("");
     expect(m["Lead Status"]).toBe("");
+    // HubSpot's "Company owner" is the HubSpot user, NOT the business owner.
+    expect(m["Company owner"]).toBe("");
     expect(mappingProblems(m)).toEqual([]);
   });
   it("flags missing required columns", () => {
     expect(mappingProblems(guessMapping(["City"]))).toHaveLength(2);
+  });
+});
+
+describe("owner name columns", () => {
+  it("maps owner columns from vendor files", () => {
+    expect(guessMapping(["Business", "Phone", "Owner Name"])["Owner Name"]).toBe("contact_name");
+    expect(guessMapping(["Business", "Phone", "Owner"])["Owner"]).toBe("contact_name");
   });
 });
 

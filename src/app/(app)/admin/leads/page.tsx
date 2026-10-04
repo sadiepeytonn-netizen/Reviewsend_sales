@@ -16,7 +16,7 @@ type InventoryRow = {
 };
 type SourceRow = { lead_source: string; total: number; dialed: number; bad_numbers: number; dnc: number };
 type LeadRow = {
-  id: string; business_name: string; phone_e164: string | null; city: string | null; state: string | null;
+  id: string; business_name: string; contact_name: string | null; phone_e164: string | null; city: string | null; state: string | null;
   list: "EAST" | "WEST" | null; status: LeadStatus; attempt_count: number; lead_source: string | null;
   owner: { full_name: string } | null;
 };
@@ -42,7 +42,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
 
   let query = supabase
     .from("leads")
-    .select("id, business_name, phone_e164, city, state, list, status, attempt_count, lead_source, owner:profiles!leads_owner_id_fkey(full_name)", { count: "exact" })
+    .select("id, business_name, contact_name, phone_e164, city, state, list, status, attempt_count, lead_source, owner:profiles!leads_owner_id_fkey(full_name)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
@@ -165,7 +165,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
 
       <Card className="mt-6 overflow-hidden p-0">
         <form className="grid gap-3 border-b border-gray-100 p-4 sm:grid-cols-[1fr_9rem_12rem_auto]" action="/admin/leads">
-          <Input name="q" defaultValue={q} placeholder="Search business, contact, city, or phone" aria-label="Search" />
+          <Input name="q" defaultValue={q} placeholder="Search business, owner, city, or phone" aria-label="Search" />
           <Select name="list" defaultValue={list} aria-label="List">
             <option value="">All lists</option>
             <option value="EAST">EAST</option>
@@ -210,6 +210,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
                   <tr key={l.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2 font-medium text-gray-900">
                       <Link href={`/admin/leads/${l.id}`} className="hover:underline">{l.business_name}</Link>
+                      <p className="text-xs font-normal text-gray-500">{l.contact_name ? `Owner: ${l.contact_name}` : "Owner unknown"}</p>
                     </td>
                     <td className="whitespace-nowrap px-4 py-2 text-gray-600">{formatPhone(l.phone_e164)}</td>
                     <td className="hidden px-4 py-2 text-gray-600 md:table-cell">{[l.city, l.state].filter(Boolean).join(", ")}</td>

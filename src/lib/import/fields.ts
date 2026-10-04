@@ -4,9 +4,9 @@
 export const LEAD_FIELDS = [
   { key: "business_name", label: "Business name", required: true, synonyms: ["company name", "company", "business name", "business", "account name", "name"] },
   { key: "phone", label: "Phone", required: true, synonyms: ["phone number", "phone", "telephone", "main phone", "business phone", "phone 1", "mobile phone number", "mobile"] },
-  { key: "contact_name", label: "Contact name (full)", synonyms: ["contact name", "contact", "full name", "owner name", "decision maker"] },
-  { key: "contact_first_name", label: "Contact first name", synonyms: ["first name", "firstname", "contact first name"] },
-  { key: "contact_last_name", label: "Contact last name", synonyms: ["last name", "lastname", "contact last name"] },
+  { key: "contact_name", label: "Owner name (full)", synonyms: ["owner name", "owner", "business owner", "owner full name", "contact name", "contact", "full name", "decision maker"] },
+  { key: "contact_first_name", label: "Owner first name", synonyms: ["owner first name", "first name", "firstname", "contact first name"] },
+  { key: "contact_last_name", label: "Owner last name", synonyms: ["owner last name", "last name", "lastname", "contact last name"] },
   { key: "email", label: "Email", synonyms: ["email", "email address", "e-mail", "contact email"] },
   { key: "website", label: "Website", synonyms: ["website", "website url", "url", "domain", "company domain name", "web site"] },
   { key: "address", label: "Street address", synonyms: ["address", "street address", "street", "address 1", "address line 1", "full address"] },

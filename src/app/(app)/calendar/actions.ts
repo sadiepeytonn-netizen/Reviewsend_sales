@@ -29,6 +29,11 @@ const FRIENDLY: Record<string, string> = {
   not_your_appointment: "That appointment belongs to someone else.",
   appointment_not_found: "That appointment no longer exists.",
   appointment_in_past: "Pick a time in the future.",
+  other_rep: "That business belongs to another rep's client list.",
+  do_not_call: "That number is on the Do Not Call list.",
+  business_name_required: "Enter the business name.",
+  lead_not_found: "That lead no longer exists.",
+  not_allowed: "Only an admin can book for another rep.",
 };
 const friendly = (m?: string) => FRIENDLY[Object.keys(FRIENDLY).find((k) => m?.includes(k)) ?? ""] ?? `Something went wrong: ${m}`;
 
@@ -101,4 +106,66 @@ export async function resetCalendarLink(): Promise<{ token?: string; error?: str
   if (error) return { error: friendly(error.message) };
   revalidatePath("/calendar");
   return { token: data as string };
+}
+
+const bookSchema = z.object({
+  leadId: z.uuid().nullable(),
+  newLead: z
+    .object({
+      phone: z.string(),
+      businessName: z.string().trim().min(1, "Enter the business name."),
+      ownerName: z.string().trim().max(200),
+      email: z.string().trim().max(200),
+    })
+    .nullable(),
+  repId: z.uuid().nullable(),
+  startIso: z.iso.datetime({ offset: true }),
+  minutes: z.number().int().min(5).max(480),
+});
+
+/**
+ * Book a demo straight from the calendar (an existing lead, or a new client).
+ * These don't count as "appointments set" in stats; only dialer outcomes do.
+ */
+export async function bookAppointment(input: z.infer<typeof bookSchema>): Promise<{ error?: string }> {
+  const me = await requireUser();
+  const parsed = bookSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const b = parsed.data;
+  const rep = b.repId ?? me.id;
+  if (rep !== me.id && me.role !== "admin") return { error: FRIENDLY.not_allowed };
+  if (Date.parse(b.startIso) < Date.now() - 5 * 60_000) return { error: FRIENDLY.appointment_in_past };
+  const supabase = await createClient();
+
+  let leadId = b.leadId;
+  if (!leadId) {
+    if (!b.newLead) return { error: "Pick a lead or enter a new client." };
+    const { normalizePhone, locate, listForTimezone } = await import("@/lib/phone");
+    const phone = normalizePhone(b.newLead.phone);
+    if (!phone) return { error: "Enter a valid US phone number." };
+    const where = locate(phone);
+    const { data, error } = await supabase.rpc("find_or_create_lead", {
+      p_phone: phone,
+      p_business: b.newLead.businessName,
+      p_owner: b.newLead.ownerName,
+      p_email: b.newLead.email,
+      p_city: "",
+      p_state: where.state ?? "",
+      p_timezone: where.timezone ?? "",
+      p_list: listForTimezone(where.timezone),
+      p_for_rep: rep,
+    });
+    if (error) return { error: friendly(error.message) };
+    leadId = data as string;
+  }
+
+  const { error } = await supabase.rpc("create_appointment_manual", {
+    p_lead: leadId,
+    p_rep: rep,
+    p_start: b.startIso,
+    p_minutes: b.minutes,
+  });
+  if (error) return { error: friendly(error.message) };
+  revalidatePath("/calendar");
+  return {};
 }

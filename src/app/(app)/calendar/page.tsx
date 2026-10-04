@@ -23,9 +23,9 @@ export default async function CalendarPage() {
     <>
       <PageHeader
         title="Calendar"
-        description={isAdmin ? "Everyone's appointments. Pick a rep to see just theirs." : "Your appointments. Click one to open the lead."}
+        description={isAdmin ? "Everyone's appointments. Pick a rep to see just theirs, or click an empty time to book a demo." : "Your appointments. Click one to open the lead, or click an empty time to book a demo."}
       />
-      <CalendarView isAdmin={isAdmin} reps={(reps ?? []).map((r) => ({ id: r.id, name: r.full_name || r.email }))} />
+      <CalendarView meId={me.id} isAdmin={isAdmin} reps={(reps ?? []).map((r) => ({ id: r.id, name: r.full_name || r.email }))} />
       <div className="mt-6">
         <FeedCard token={feed?.token ?? null} isAdmin={isAdmin} origin={origin} />
       </div>

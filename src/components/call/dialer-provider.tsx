@@ -6,10 +6,16 @@ import type { Call, Device } from "@twilio/voice-sdk";
 import {
   addLeadNote,
   claimNext,
+  closeManualCall,
   dispose,
   getVoiceToken,
+  lookupNumber,
+  releaseLead,
+  saveCallAsLead,
   setPresence,
   startCall,
+  startManualCall,
+  type DialerLead,
   type LeadContext,
 } from "@/app/(app)/dialer/actions";
 import type { Disposition } from "@/app/(app)/dialer/wrap-up";
@@ -27,9 +33,14 @@ export const PAUSE_LABELS: Record<PauseReason, string> = {
   other: "Other",
 };
 
+export type Mode = "queue" | "single" | "manual";
+
 type DialerApi = {
   phase: Phase;
-  mode: "queue" | "single";
+  /** queue = EAST/WEST dialing, single = one of the rep's own leads, manual = typed on the keypad */
+  mode: Mode;
+  /** Keypad call: the number dialed (ctx is null when it isn't in the CRM yet). */
+  manualPhone: string | null;
   list: ListName;
   ctx: LeadContext | null;
   error: string | null;
@@ -58,6 +69,11 @@ type DialerApi = {
   sendDigits: (d: string) => void;
   submitDisposition: (d: Disposition) => Promise<void>;
   addNote: (body: string) => Promise<{ error?: string }>;
+  patchLead: (patch: Partial<DialerLead>) => void;
+  dialNumber: (raw: string) => Promise<void>;
+  cancelManual: () => Promise<void>;
+  saveManualLead: (input: { businessName: string; ownerName: string; email?: string }) => Promise<{ error?: string }>;
+  closeUnknown: (d: "no_answer" | "bad_number") => Promise<void>;
 };
 
 const DialerContext = createContext<DialerApi | null>(null);
@@ -76,7 +92,10 @@ export function useDialer(): DialerApi {
 export function DialerProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
-  const [mode, setMode] = useState<"queue" | "single">("queue");
+  const [mode, setMode] = useState<Mode>("queue");
+  const [manualPhone, setManualPhone] = useState<string | null>(null);
+  // Where to go after a keypad call: back to the EAST/WEST queue, or idle.
+  const returnToQueue = useRef(false);
   const [list, setList] = useState<ListName>("EAST");
   const [ctx, setCtx] = useState<LeadContext | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -215,13 +234,16 @@ export function DialerProvider({ children }: { children: ReactNode }) {
     return true;
   }, [phase]);
 
-  const call = useCallback(async () => {
-    if (!ctx) return;
+  type Target = { manual: false; leadId: string } | { manual: true; phone: string; leadId: string | null };
+
+  const placeCall = useCallback(async (target: Target) => {
     setError(null);
     setBusy(true);
     const device = await ensureDevice();
     if (!device) return setBusy(false);
-    const started = await startCall(ctx.lead.id);
+    const started = target.manual
+      ? await startManualCall(target.phone, target.leadId)
+      : await startCall(target.leadId);
     if (!started.callId) {
       setBusy(false);
       setError(started.error ?? "Couldn't start the call.");
@@ -254,7 +276,12 @@ export function DialerProvider({ children }: { children: ReactNode }) {
       setError(`Couldn't connect the call: ${(e as Error).message}. Check that the browser can use your microphone.`);
       endCall();
     }
-  }, [ctx, ensureDevice, endCall, mode, list, loadNext]);
+  }, [ensureDevice, endCall, mode, list, loadNext]);
+
+  const call = useCallback(async () => {
+    if (mode === "manual" && manualPhone) return placeCall({ manual: true, phone: manualPhone, leadId: ctx?.lead.id ?? null });
+    if (ctx) return placeCall({ manual: false, leadId: ctx.lead.id });
+  }, [mode, manualPhone, ctx, placeCall]);
 
   const hangUp = useCallback(() => {
     if (callRef.current) callRef.current.disconnect();
@@ -270,6 +297,80 @@ export function DialerProvider({ children }: { children: ReactNode }) {
 
   const sendDigits = useCallback((d: string) => callRef.current?.sendDigits(d), []);
 
+  // ---- Keypad (manual) calls ------------------------------------------------
+
+  /** After a keypad call: back to the queue if the rep was dialing, else idle. */
+  const finishManual = useCallback(async () => {
+    setManualPhone(null);
+    setCtx(null);
+    setCallId(null);
+    setMode("queue");
+    if (returnToQueue.current) {
+      returnToQueue.current = false;
+      await loadNext(list);
+    } else {
+      setPhase("idle");
+      void setPresence({ status: "idle" });
+    }
+  }, [list, loadNext]);
+
+  const dialNumber = useCallback(async (raw: string) => {
+    if (phase === "calling" || phase === "wrapup") {
+      setError("Finish your current call (pick an outcome) before dialing another number.");
+      return;
+    }
+    if (phase === "paused") {
+      setError("Resume dialing (or stop dialing) before using the keypad.");
+      return;
+    }
+    if (phase === "loading") return;
+    setError(null);
+    setBusy(true);
+    const res = await lookupNumber(raw);
+    if (res.status === "blocked") {
+      setBusy(false);
+      setError(res.error);
+      return;
+    }
+    // Give back the lead the rep was looking at (unless it's the same one).
+    const held = ctx?.lead;
+    const nextId = res.status === "lead" ? res.context.lead.id : null;
+    if (held && held.id !== nextId && !held.owner_id) await releaseLead(held.id);
+    if (mode !== "manual") returnToQueue.current = mode === "queue" && phase !== "idle";
+    setMode("manual");
+    setManualPhone(res.phone);
+    setCtx(res.status === "lead" ? res.context : null);
+    setCallId(null);
+    setPhase("lead");
+    setBusy(false);
+    // Dial right away: the rep already pressed Call on the keypad.
+    await placeCall({ manual: true, phone: res.phone, leadId: nextId });
+  }, [phase, ctx, mode, placeCall]);
+
+  const cancelManual = useCallback(async () => {
+    if (ctx && !ctx.lead.owner_id) await releaseLead(ctx.lead.id);
+    await finishManual();
+  }, [ctx, finishManual]);
+
+  const saveManualLead = useCallback(async (input: { businessName: string; ownerName: string; email?: string }) => {
+    if (!manualPhone) return { error: "No number." };
+    setBusy(true);
+    const res = await saveCallAsLead({ callId, phone: manualPhone, ...input });
+    setBusy(false);
+    if (res.context) setCtx(res.context);
+    return { error: res.error };
+  }, [callId, manualPhone]);
+
+  const closeUnknown = useCallback(async (d: "no_answer" | "bad_number") => {
+    if (callId) {
+      setBusy(true);
+      const res = await closeManualCall(callId, d);
+      setBusy(false);
+      if (res.error) return setError(res.error);
+    }
+    await finishManual();
+  }, [callId, finishManual]);
+
   const submitDisposition = useCallback(async (d: Disposition) => {
     if (!ctx) return;
     setBusy(true);
@@ -284,6 +385,7 @@ export function DialerProvider({ children }: { children: ReactNode }) {
     setBusy(false);
     if (res.error) return setError(res.error);
     setCallId(null);
+    if (mode === "manual") return finishManual();
     if (mode === "single") {
       const id = ctx.lead.id;
       setCtx(null);
@@ -303,7 +405,7 @@ export function DialerProvider({ children }: { children: ReactNode }) {
       return;
     }
     await loadNext(list);
-  }, [ctx, callId, mode, list, loadNext, router]);
+  }, [ctx, callId, mode, list, loadNext, router, finishManual]);
 
   const addNote = useCallback(async (body: string) => {
     if (!ctx) return { error: "No lead loaded." };
@@ -312,11 +414,15 @@ export function DialerProvider({ children }: { children: ReactNode }) {
     return res;
   }, [ctx]);
 
+  const patchLead = useCallback((patch: Partial<DialerLead>) => {
+    setCtx((c) => (c ? { ...c, lead: { ...c.lead, ...patch } } : c));
+  }, []);
+
   const api: DialerApi = {
-    phase, mode, list, ctx, error, callId, callState, answeredAt, muted, pauseReason, pausedAt, busy, paying,
+    phase, mode, manualPhone, list, ctx, error, callId, callState, answeredAt, muted, pauseReason, pausedAt, busy, paying,
     setList, setPauseReason, setError, setPaying, setPhase,
     startDialing, stopDialing, loadNext, pause, resume, startSingle, call, hangUp, toggleMute, sendDigits,
-    submitDisposition, addNote,
+    submitDisposition, addNote, patchLead, dialNumber, cancelManual, saveManualLead, closeUnknown,
   };
   return <DialerContext.Provider value={api}>{children}</DialerContext.Provider>;
 }

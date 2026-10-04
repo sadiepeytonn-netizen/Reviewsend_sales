@@ -74,6 +74,33 @@ browser asks "Leave site?" first).
   of the company's numbers.
 - Admin can recycle exhausted leads back into the pool from the Leads page.
 
+### Keypad ("Dial a number")
+- A fold-out keypad on the dialer, above Notes (and on the idle / empty screens). No calling-hours
+  limit on keypad dials. Do Not Call numbers are still blocked.
+- A number belonging to another rep's client is blocked. A number another rep has on screen right
+  now is blocked.
+- A number that's already a lead opens that lead (owner, notes, past calls) and dials. Shared-pool
+  leads are held for the rep like a normal dialer lead.
+- An unknown number dials. After the call, the rep saves it as a lead (owner name, business name, phone
+  prefilled, email optional) and then picks the outcome. Phone numbers never duplicate. If nobody
+  answered, the rep can choose "No answer, don't save" or "Wrong number" instead.
+- Keypad calls count in Dials and Contacts like any call. They also have their own **Manual dials**
+  column. A rep who was dialing EAST/WEST goes back to the queue afterwards.
+
+### Owner name
+- The owner's name is the most important piece of a lead. On the dialer it's the biggest text on
+  the card, above the business name. If it's missing, a yellow box asks for it, and the rep can
+  type it in on the spot.
+- The dialer has **Copy number** and **Google it** buttons for looking up the business before calling.
+- Imports map "Owner", "Owner name", "Contact name", "First/Last name" to the owner's name.
+  HubSpot's "Company owner" (a HubSpot user) is not mapped.
+
+### Listen / whisper / barge (switches built; call coaching itself is next)
+- All reps can listen by default. Whisper and barge are off by default. The admin turns each one
+  on or off per rep on the rep's user page. Admin can always listen, whisper, and barge.
+- Reps are never shown that someone is listening.
+- Needs the calls to run as Twilio conferences. That will be a separate update, tested with real calls.
+
 ### Recordings
 - Kept 1 year.
 - Reps can listen to their own calls. Admin can listen to and download any call.
@@ -85,6 +112,13 @@ browser asks "Leave site?" first).
 - A rep can mark Sold on the first call (no appointment needed).
 - Each rep gets a private calendar link to subscribe to in Google Calendar /
   iPhone (one-way). Two-way Google sync is a later project.
+
+### Booking from the calendar
+- Click an empty time on the week view (snaps to 15 minutes), or **New appointment**, to book a
+  demo. Pick a lead you own (reps can search only their own leads; admin searches all), or enter a
+  new client (owner, business, phone, email). A phone number already in the CRM is matched, not
+  duplicated. Another rep's client is blocked. Admin picks which rep it's for.
+- Calendar bookings do **not** count as "appointments set". Only the dialer's Appointment set outcome counts.
 
 ### Calendar details (built in step 4)
 - Week view with time blocks (business name, time, phone); phones get a day-by-day list.
@@ -103,7 +137,10 @@ All in Eastern time, for the chosen range (today / this week / this month / cust
   the clock at its last check-in). **Not calling** = logged in minus time on calls.
 - **Paused** by reason; **Avg between calls** = end of one call to start of the next
   (gaps over 30 minutes are treated as breaks and left out).
-- **Appointments set** = Appointment set outcomes. **Appt %** = of contacts.
+- **Appointments set** = Appointment set outcomes on the dialer, counting each lead's **first** one
+  only, so re-booking after a missed demo doesn't count twice. Calendar bookings don't count.
+  **Appt %** = of contacts.
+- **Manual dials** = keypad calls (already included in Dials).
 - **Demos** = appointments marked Showed + Demo completed outcomes (each lead once).
   **Show rate** = showed ÷ (showed + demo missed).
 - **Pitched, no sale** = demos where the lead isn't sold. **Sales** = Sold outcomes.
@@ -169,6 +206,8 @@ The client app's A2P 10DLC texting registration lives in the MAIN Twilio account
   it won't affect the A2P brand. CNAM / Branded Calling: on hold.
 
 ## Open decisions
+- **Recording notice**: owner asked to remove it. On hold until the owner decides (Florida needs
+  every party's consent to record). The current notice stays until then.
 - **Inbound callbacks** (prospects calling the sales numbers back): undecided.
   Options: forward to a phone, voicemail in the CRM routed to the last rep who
   called, forward-then-voicemail (recommended), or ring the rep's browser.

@@ -48,7 +48,7 @@ export default async function LeadPage({ params }: PageProps<"/admin/leads/[id]"
       </Link>
       <PageHeader
         title={lead.business_name}
-        description={[lead.contact_name, [lead.city, lead.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
+        description={[lead.contact_name ? `Owner: ${lead.contact_name}` : "Owner unknown", [lead.city, lead.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
         actions={<Badge tone={STATUS_TONES[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>}
       />
 

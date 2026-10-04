@@ -6,10 +6,16 @@ import { DEFAULT_PLAN, describePlan, planFromRow } from "@/lib/commission";
 import { createClient } from "@/lib/supabase/server";
 import type { CommissionPlanRow, Profile } from "@/lib/types";
 import { Badge, Button, Card, PageHeader } from "@/components/ui";
-import { setActive } from "../actions";
+import { setActive, setCoaching } from "../actions";
 import { CommissionPlanForm } from "./commission-plan-form";
 import { ProfileForm, ResetPasswordForm } from "./user-forms";
 import { formatTime } from "@/lib/time";
+
+const COACHING = [
+  { field: "can_listen", label: "Listen", help: "Hear the call. Nobody on the call can tell." },
+  { field: "can_whisper", label: "Whisper", help: "Talk to the rep only. The prospect can't hear." },
+  { field: "can_barge", label: "Barge", help: "Join the call. Everyone hears." },
+] as const;
 
 export default async function UserPage({ params }: PageProps<"/admin/users/[id]">) {
   const { id } = await params;
@@ -69,6 +75,34 @@ export default async function UserPage({ params }: PageProps<"/admin/users/[id]"
 
         {user.role === "rep" && (
           <div className="space-y-6">
+            {user.can_listen !== undefined && (
+              <Card>
+                <h2 className="font-medium text-gray-900">Listening in on calls</h2>
+                <p className="mb-4 mt-1 text-sm text-gray-500">
+                  What this rep may do on other reps&apos; live calls (for training). Reps never see that someone is listening.
+                </p>
+                <ul className="divide-y divide-gray-100">
+                  {COACHING.map((c) => {
+                    const on = Boolean(user[c.field]);
+                    return (
+                      <li key={c.field} className="flex items-center justify-between gap-4 py-3">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{c.label}</p>
+                          <p className="text-xs text-gray-500">{c.help}</p>
+                        </div>
+                        <form action={setCoaching} className="flex items-center gap-2">
+                          <input type="hidden" name="userId" value={user.id} />
+                          <input type="hidden" name="field" value={c.field} />
+                          <input type="hidden" name="value" value={on ? "false" : "true"} />
+                          {on ? <Badge tone="green">On</Badge> : <Badge>Off</Badge>}
+                          <Button variant="secondary">{on ? "Turn off" : "Turn on"}</Button>
+                        </form>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Card>
+            )}
             <Card>
               <h2 className="font-medium text-gray-900">Commission plan</h2>
               <p className="mb-5 mt-1 text-sm text-gray-500">

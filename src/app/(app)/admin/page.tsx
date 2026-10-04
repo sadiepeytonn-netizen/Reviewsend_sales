@@ -42,7 +42,7 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi hero label="Sales" value={t.sales} sub={`Close rate ${pct(t.sales, t.sales + t.pitched_no_sale)} · ${money(t.mrr)} MRR`} />
-        <Kpi label="Dials" value={t.dials.toLocaleString()} sub={`${t.contacts.toLocaleString()} contacts · ${pct(t.contacts, t.dials)} contact rate`} />
+        <Kpi label="Dials" value={t.dials.toLocaleString()} sub={`${t.contacts.toLocaleString()} contacts · ${pct(t.contacts, t.dials)} contact rate · ${t.manual_dials.toLocaleString()} manual`} />
         <Kpi label="Appointments set" value={t.appointments} sub={`${pct(t.appointments, t.contacts)} of contacts`} />
         <Kpi label="Demos" value={t.demos} sub={`Show rate ${pct(t.showed, t.showed + t.missed)} · ${t.pitched_no_sale} pitched, no sale`} />
         <Kpi label="Talk time" value={duration(t.talk_seconds)} sub={`Avg ${t.answered_calls ? duration(t.talk_seconds / t.answered_calls) : "—"} per answered call`} />

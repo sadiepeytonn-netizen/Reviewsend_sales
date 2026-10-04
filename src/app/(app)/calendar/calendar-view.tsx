@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, ExternalLink, Phone, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Phone, Plus, X } from "lucide-react";
 import { Badge, Button, Card, Select } from "@/components/ui";
 import { formatPhone } from "@/lib/phone";
 import { getAppointments, getNeedsOutcome, type CalendarAppointment } from "./actions";
 import { APPOINTMENT_LABELS, AppointmentActions } from "./appointment-actions";
+import { NewAppointment } from "./new-appointment";
 
 const ROW = 80; // pixels per hour
 
@@ -30,6 +31,14 @@ function startOfWeek(d: Date) {
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+
+/** The next quarter hour from now. */
+function nextSlot() {
+  const d = new Date();
+  d.setSeconds(0, 0);
+  d.setMinutes(Math.ceil((d.getMinutes() + 1) / 15) * 15);
+  return d;
+}
 
 /** Side-by-side placement for overlapping appointments within one day. */
 function layoutDay(appts: CalendarAppointment[]) {
@@ -60,10 +69,12 @@ function layoutDay(appts: CalendarAppointment[]) {
 }
 
 export function CalendarView({
+  meId,
   isAdmin,
   reps,
   initialRepId,
 }: {
+  meId: string;
   isAdmin: boolean;
   reps: { id: string; name: string }[];
   initialRepId?: string;
@@ -73,6 +84,7 @@ export function CalendarView({
   const [appts, setAppts] = useState<CalendarAppointment[]>([]);
   const [needsOutcome, setNeedsOutcome] = useState<CalendarAppointment[]>([]);
   const [selected, setSelected] = useState<CalendarAppointment | null>(null);
+  const [booking, setBooking] = useState<Date | null>(null);
   const [loadedKey, setLoadedKey] = useState("");
   const [now, setNow] = useState(() => Date.now());
   // Dates depend on the viewer's clock and time zone, so draw only in the browser.
@@ -176,6 +188,9 @@ export function CalendarView({
         <Button variant="ghost" onClick={() => shift(1)} aria-label="Next week"><ChevronRight className="h-4 w-4" /></Button>
         <span className="ml-1 font-semibold text-gray-900">{weekLabel}</span>
         {loading && <span className="text-xs text-gray-400">Loading…</span>}
+        <Button variant="secondary" className={isAdmin ? "" : "ml-auto"} onClick={() => setBooking(nextSlot())}>
+          <Plus className="h-4 w-4" /> New appointment
+        </Button>
         {isAdmin && (
           <div className="ml-auto w-48">
             <Select value={repId} onChange={(e) => setRepId(e.target.value)} aria-label="Rep">
@@ -218,7 +233,18 @@ export function CalendarView({
             dayStart.setHours(startHour, 0, 0, 0);
             const nowTop = ((now - dayStart.getTime()) / 3_600_000) * ROW;
             return (
-              <div key={d.toISOString()} className="relative border-l border-gray-200" style={{ height: (endHour - startHour) * ROW }}>
+              <div
+                key={d.toISOString()}
+                className="relative cursor-pointer border-l border-gray-200 hover:bg-gray-50/60"
+                style={{ height: (endHour - startHour) * ROW }}
+                title="Click to book a demo at this time"
+                onClick={(e) => {
+                  // Snap the click to the nearest 15 minutes.
+                  const y = e.clientY - e.currentTarget.getBoundingClientRect().top;
+                  const mins = Math.max(0, Math.floor(((y / ROW) * 60) / 15) * 15);
+                  setBooking(new Date(dayStart.getTime() + mins * 60_000));
+                }}
+              >
                 {Array.from({ length: endHour - startHour }, (_, i) => (
                   <div key={i} className="absolute inset-x-0 border-t border-gray-100" style={{ top: i * ROW }} />
                 ))}
@@ -234,7 +260,10 @@ export function CalendarView({
                   return (
                     <button
                       key={appt.id}
-                      onClick={() => setSelected(appt)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelected(appt);
+                      }}
                       className={`absolute z-20 overflow-hidden rounded-md px-1.5 py-1 text-left text-[11px] leading-tight ring-1 transition hover:z-30 hover:shadow-md ${repColor(appt.rep_id)} ${ring} ${faded}`}
                       style={{ top, height, left: `calc(${(lane / lanes) * 100}% + 2px)`, width: `calc(${100 / lanes}% - 4px)` }}
                       title={`${appt.lead?.business_name} · ${formatPhone(appt.lead?.phone_e164)}`}
@@ -257,9 +286,21 @@ export function CalendarView({
           const dayAppts = appts.filter((a) => sameDay(new Date(a.starts_at), d));
           return (
             <Card key={d.toISOString()} className="p-4">
-              <p className={`text-sm font-semibold ${sameDay(d, new Date(now)) ? "text-brand-700" : "text-gray-900"}`}>
-                {d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className={`text-sm font-semibold ${sameDay(d, new Date(now)) ? "text-brand-700" : "text-gray-900"}`}>
+                  {d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}
+                </p>
+                <button
+                  onClick={() => {
+                    const x = new Date(d);
+                    x.setHours(10, 0, 0, 0);
+                    setBooking(x);
+                  }}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-brand-700"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add
+                </button>
+              </div>
               {dayAppts.length === 0 ? (
                 <p className="mt-1 text-sm text-gray-400">Nothing scheduled</p>
               ) : (
@@ -279,6 +320,20 @@ export function CalendarView({
         })}
       </div>
 
+      {booking && (
+        <NewAppointment
+          start={booking}
+          isAdmin={isAdmin}
+          reps={reps}
+          defaultRepId={repId || meId}
+          onClose={() => setBooking(null)}
+          onSaved={() => {
+            setBooking(null);
+            void load();
+          }}
+        />
+      )}
+
       {selected && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-4 sm:items-center" onClick={() => setSelected(null)}>
           <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
@@ -286,7 +341,7 @@ export function CalendarView({
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">{selected.lead?.business_name}</h3>
                 <p className="text-sm text-gray-600">
-                  {[selected.lead?.contact_name, [selected.lead?.city, selected.lead?.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
+                  {[selected.lead?.contact_name ? `Owner: ${selected.lead.contact_name}` : null, [selected.lead?.city, selected.lead?.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
                 </p>
               </div>
               <button onClick={() => setSelected(null)} className="rounded p-1 text-gray-400 hover:bg-gray-100" aria-label="Close"><X className="h-5 w-5" /></button>

@@ -10,6 +10,7 @@ import { STATUS_LABELS, STATUS_TONES, timezoneLabel } from "@/lib/leads";
 import type { LeadContext } from "./actions";
 import { mmss, PAUSE_LABELS, useClock, useDialer, type Phase, type PauseReason } from "@/components/call/dialer-provider";
 import { LeadDetails, NotesPanel, PastCalls } from "./lead-panels";
+import { KeypadPanel, OwnerName, PhoneTools, SaveNewNumber } from "./keypad";
 import { WrapUp } from "./wrap-up";
 
 export function Dialer({
@@ -27,7 +28,7 @@ export function Dialer({
   // All call/session state lives in DialerProvider (app layout), so it
   // survives moving to other pages mid-call. This component only draws it.
   const d = useDialer();
-  const { phase, list, ctx, error, callId, callState, answeredAt, muted, pauseReason, pausedAt, busy, paying, mode } = d;
+  const { phase, list, ctx, error, callId, callState, answeredAt, muted, pauseReason, pausedAt, busy, paying, mode, manualPhone } = d;
   const [showKeypad, setShowKeypad] = useState(false);
   const now = useClock(callState === "open" || phase === "paused" || phase === "empty");
 
@@ -40,6 +41,7 @@ export function Dialer({
   }, [singleLead, d]);
 
   const single = mode === "single";
+  const manual = mode === "manual";
   const call = d.call;
   const hangUp = d.hangUp;
   const toggleMute = d.toggleMute;
@@ -56,6 +58,35 @@ export function Dialer({
   const onAddNote = d.addNote;
 
   // ---- Render --------------------------------------------------------------
+  const callControls = (
+    <>
+      <Button onClick={hangUp} className="bg-red-600 px-6 py-3 text-base hover:bg-red-700">
+        <PhoneOff className="h-5 w-5" /> Hang up
+      </Button>
+      <Button variant="secondary" onClick={toggleMute} disabled={callState !== "open"}>
+        {muted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />} {muted ? "Unmute" : "Mute"}
+      </Button>
+      <Button variant="secondary" onClick={() => setShowKeypad((v) => !v)} disabled={callState !== "open"}>
+        <Grid3x3 className="h-4 w-4" /> Keypad
+      </Button>
+      <span className="ml-2 font-mono text-lg text-gray-700">
+        {callState === "open" && answeredAt ? mmss(now - answeredAt) : callState === "ringing" ? "Ringing…" : "Connecting…"}
+      </span>
+    </>
+  );
+  const dtmfPad = (
+    <div className="mt-4 grid w-48 grid-cols-3 gap-2">
+      {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((k) => (
+        <button
+          key={k}
+          onClick={() => d.sendDigits(k)}
+          className="rounded-lg bg-gray-100 py-2 text-lg font-semibold text-gray-800 hover:bg-gray-200"
+        >
+          {k}
+        </button>
+      ))}
+    </div>
+  );
   const lead = ctx?.lead;
   const onCall = phase === "calling";
 
@@ -93,8 +124,9 @@ export function Dialer({
             <>
               <Badge tone="blue">{list}</Badge>
               <StatusPill phase={phase} callState={callState} pauseReason={pauseReason} />
+              {manual && <Badge tone="gray">Keypad call</Badge>}
               <div className="ml-auto flex flex-wrap items-center gap-2">
-                {(phase === "lead" || phase === "empty") && (
+                {(phase === "lead" || phase === "empty") && !manual && (
                   <>
                     <Select value={pauseReason} onChange={(e) => setPauseReason(e.target.value as PauseReason)} aria-label="Pause reason" className="w-32">
                       {Object.entries(PAUSE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -102,7 +134,7 @@ export function Dialer({
                     <Button variant="secondary" onClick={pause}><Pause className="h-4 w-4" /> Pause</Button>
                   </>
                 )}
-                {phase !== "calling" && phase !== "wrapup" && (
+                {phase !== "calling" && phase !== "wrapup" && !manual && (
                   <Button variant="ghost" onClick={stopDialing}><Square className="h-4 w-4" /> Stop dialing</Button>
                 )}
               </div>
@@ -119,6 +151,12 @@ export function Dialer({
           <p className="mt-3 font-medium text-gray-900">Pick EAST or WEST, then click Start dialing.</p>
           <p className="mt-1 text-sm text-gray-500">Leads load one at a time. Nobody else can get the lead you&apos;re on.</p>
         </Card>
+      )}
+
+      {(phase === "idle" || phase === "empty") && (
+        <div className="max-w-sm">
+          <KeypadPanel busy={busy} defaultOpen={phase === "idle"} onDial={(n) => void d.dialNumber(n)} />
+        </div>
       )}
 
       {phase === "loading" && <Card className="py-16 text-center text-gray-500">Loading the next lead…</Card>}
@@ -142,17 +180,41 @@ export function Dialer({
         </Card>
       )}
 
+      {manual && !lead && manualPhone && (phase === "lead" || phase === "calling" || phase === "wrapup") && (
+        <div className="space-y-4">
+          <Card>
+            <p className="text-sm font-medium uppercase tracking-wide text-gray-500">New number, not in the CRM</p>
+            <p className="mt-2 font-mono text-3xl font-semibold text-gray-900">{formatPhone(manualPhone)}</p>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              {phase === "lead" && (
+                <>
+                  <Button onClick={call} disabled={busy || !callingReady} className="bg-green-600 px-6 py-3 text-base hover:bg-green-700">
+                    <Phone className="h-5 w-5" /> Call
+                  </Button>
+                  <Button variant="ghost" onClick={() => void d.cancelManual()} disabled={busy}>Cancel</Button>
+                </>
+              )}
+              {onCall && callControls}
+            </div>
+            {onCall && showKeypad && dtmfPad}
+          </Card>
+          {phase === "wrapup" && (
+            <SaveNewNumber phone={manualPhone} busy={busy} hadCall={Boolean(callId)} onSave={d.saveManualLead} onSkip={(x) => void d.closeUnknown(x)} />
+          )}
+        </div>
+      )}
+
       {lead && (phase === "lead" || phase === "calling" || phase === "wrapup") && (
         <div className="grid gap-4 xl:grid-cols-[1fr_24rem]">
           <div className="space-y-4">
             <Card>
               <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <h2 className="text-2xl font-semibold tracking-tight text-gray-900">{lead.business_name}</h2>
-                  <p className="mt-1 text-gray-600">
-                    {[lead.contact_name, [lead.city, lead.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
-                  </p>
-                  <p className="mt-3 font-mono text-3xl font-semibold text-gray-900">{formatPhone(lead.phone_e164)}</p>
+                <div className="min-w-0 space-y-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Owner</p>
+                  <OwnerName key={lead.id} lead={lead} onSaved={(name) => d.patchLead({ contact_name: name })} />
+                  <h2 className="pt-2 text-xl font-semibold text-gray-700">{lead.business_name}</h2>
+                  <p className="text-gray-500">{[lead.city, lead.state].filter(Boolean).join(", ")}</p>
+                  <p className="pt-2 font-mono text-3xl font-semibold text-gray-900">{formatPhone(lead.phone_e164)}</p>
                   <p className="mt-1 text-sm text-gray-500">
                     {timezoneLabel(lead.timezone)} · their time {lead.timezone ? new Date().toLocaleTimeString("en-US", { timeZone: lead.timezone, hour: "numeric", minute: "2-digit" }) : "unknown"}
                     {" · "}
@@ -161,6 +223,7 @@ export function Dialer({
                 </div>
                 <Badge tone={STATUS_TONES[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>
               </div>
+              {phase === "lead" && <div className="mt-4"><PhoneTools phone={lead.phone_e164} /></div>}
 
               {/* Call controls */}
               <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -169,27 +232,16 @@ export function Dialer({
                     <Button onClick={call} disabled={busy || !callingReady} className="bg-green-600 px-6 py-3 text-base hover:bg-green-700">
                       <Phone className="h-5 w-5" /> Call
                     </Button>
-                    <button className="text-sm text-gray-500 underline-offset-2 hover:underline" onClick={() => setPhase("wrapup")}>
-                      Pick an outcome without calling
-                    </button>
+                    {manual ? (
+                      <Button variant="ghost" onClick={() => void d.cancelManual()} disabled={busy}>Cancel</Button>
+                    ) : (
+                      <button className="text-sm text-gray-500 underline-offset-2 hover:underline" onClick={() => setPhase("wrapup")}>
+                        Pick an outcome without calling
+                      </button>
+                    )}
                   </>
                 )}
-                {onCall && (
-                  <>
-                    <Button onClick={hangUp} className="bg-red-600 px-6 py-3 text-base hover:bg-red-700">
-                      <PhoneOff className="h-5 w-5" /> Hang up
-                    </Button>
-                    <Button variant="secondary" onClick={toggleMute} disabled={callState !== "open"}>
-                      {muted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />} {muted ? "Unmute" : "Mute"}
-                    </Button>
-                    <Button variant="secondary" onClick={() => setShowKeypad((v) => !v)} disabled={callState !== "open"}>
-                      <Grid3x3 className="h-4 w-4" /> Keypad
-                    </Button>
-                    <span className="ml-2 font-mono text-lg text-gray-700">
-                      {callState === "open" && answeredAt ? mmss(now - answeredAt) : callState === "ringing" ? "Ringing…" : "Connecting…"}
-                    </span>
-                  </>
-                )}
+                {onCall && callControls}
               </div>
               {(phase === "lead" || onCall || phase === "wrapup") && (
                 <div className="mt-4">
@@ -198,19 +250,7 @@ export function Dialer({
                   </Button>
                 </div>
               )}
-              {onCall && showKeypad && (
-                <div className="mt-4 grid w-48 grid-cols-3 gap-2">
-                  {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((k) => (
-                    <button
-                      key={k}
-                      onClick={() => d.sendDigits(k)}
-                      className="rounded-lg bg-gray-100 py-2 text-lg font-semibold text-gray-800 hover:bg-gray-200"
-                    >
-                      {k}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {onCall && showKeypad && dtmfPad}
             </Card>
 
             {phase === "wrapup" && (
@@ -218,9 +258,9 @@ export function Dialer({
                 busy={busy}
                 hadCall={Boolean(callId)}
                 leadTimezone={lead.timezone}
-                showPauseAfter={!single}
+                showPauseAfter={mode === "queue"}
                 onSubmit={submitDisposition}
-                onBack={callId ? undefined : () => setPhase("lead")}
+                onBack={callId || manual ? undefined : () => setPhase("lead")}
               />
             )}
 
@@ -228,6 +268,7 @@ export function Dialer({
           </div>
 
           <div className="space-y-4">
+            {phase === "lead" && !manual && <KeypadPanel busy={busy} onDial={(n) => void d.dialNumber(n)} />}
             <NotesPanel notes={ctx.notes} onAdd={onAddNote} />
             <PastCalls calls={ctx.calls} />
           </div>
