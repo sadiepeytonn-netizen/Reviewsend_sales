@@ -88,6 +88,23 @@ Twilio subaccount. Planned address: `sales.reviewsend.io`.
 - Private subscribe link per person (.ics) for Google Calendar / iPhone (one-way).
 - All times in the CRM are shown in Eastern time (calendar grid uses the device's time).
 
+### Stat definitions (built in step 5)
+All in Eastern time, for the chosen range (today / this week / this month / custom).
+- **Dials** = calls started. **Contacts** = calls with an outcome other than No answer / Bad number.
+- **Talk time** = connected time from Twilio; average is per answered call.
+- **Logged in** = time with the CRM open (from once-a-minute check-ins; a closed laptop stops
+  the clock at its last check-in). **Not calling** = logged in minus time on calls.
+- **Paused** by reason; **Avg between calls** = end of one call to start of the next
+  (gaps over 30 minutes are treated as breaks and left out).
+- **Appointments set** = Appointment set outcomes. **Appt %** = of contacts.
+- **Demos** = appointments marked Showed + Demo completed outcomes (each lead once).
+  **Show rate** = showed ÷ (showed + demo missed).
+- **Pitched, no sale** = demos where the lead isn't sold. **Sales** = Sold outcomes.
+  **Close rate** = sales ÷ (sales + pitched, no sale).
+- **MRR / commission** come from paid Stripe sales (step 6). Residuals: admin only.
+- Live floor refreshes every 10 seconds; a rep with no check-in for 2 minutes shows Offline.
+- Recordings older than 365 days are deleted from Twilio daily (Vercel Cron, `CRON_SECRET`).
+
 ### Payments
 - The CRM takes over the payment step. On **Sold**, the rep enters setup fee and
   monthly price, then either takes the card now (Stripe Checkout) or sends a
@@ -137,7 +154,7 @@ The client app's A2P 10DLC texting registration lives in the MAIN Twilio account
 2. ✅ Lead import, dedupe, lists, Do Not Call
 3. ✅ Dialer + dispositions + notes (test with one rep)
 4. ✅ Calendar
-5. Event tracking + dashboards
+5. ✅ Event tracking + dashboards
 6. Stripe payments + commission
 
 ## Not in v1

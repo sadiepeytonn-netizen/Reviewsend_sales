@@ -3,9 +3,10 @@ import { requireUser } from "@/lib/auth";
 import { formatPhone } from "@/lib/phone";
 import { createClient } from "@/lib/supabase/server";
 import { Card, PageHeader } from "@/components/ui";
+import { normalize, resolveRange, type RepStats } from "@/lib/stats";
+import { RepTodayTiles } from "./stats-tiles";
 import { formatTime } from "@/lib/time";
 
-const TILES = ["Dials", "Contacts", "Appointments", "Sales", "Commission"];
 
 type Upcoming = {
   id: string; starts_at: string;
@@ -25,18 +26,14 @@ export default async function RepDashboard() {
     .order("starts_at")
     .limit(8);
   const upcoming = (data ?? []) as unknown as Upcoming[];
+  const today = resolveRange("today");
+  const { data: statRows } = await supabase.rpc("rep_stats", { p_from: today.from.toISOString(), p_to: today.to.toISOString() });
+  const mine = ((statRows ?? []) as RepStats[]).map(normalize).find((r) => r.rep_id === profile.id);
 
   return (
     <>
       <PageHeader title={`Hi ${firstName}`} description="Your day at a glance." />
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        {TILES.map((label) => (
-          <Card key={label} className="p-5">
-            <p className="text-sm text-gray-500">{label} today</p>
-            <p className="mt-2 text-2xl font-semibold text-gray-300">—</p>
-          </Card>
-        ))}
-      </div>
+      <RepTodayTiles r={mine} />
       <Card className="mt-6">
         <div className="flex items-center justify-between">
           <h2 className="font-medium text-gray-900">Upcoming appointments</h2>

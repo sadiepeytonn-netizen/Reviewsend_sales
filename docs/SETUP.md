@@ -270,3 +270,18 @@ On the **Calendar** page, scroll to **See your demos in Google Calendar or on yo
 and follow the steps there. Each person has their own private link (an admin's link
 includes everyone's demos). Google refreshes subscribed calendars every few hours, so
 brand-new bookings can take a while to appear there; the CRM calendar is always instant.
+
+---
+
+# Step 5 setup (dashboards + recording cleanup)
+
+1. **Database:** open `supabase/migrations/0005_stats.sql` on GitHub → **Copy raw file** →
+   Supabase **SQL Editor** → **+ New query** → paste → **Run** (once). If the RLS warning
+   appears, choose **Run without RLS**.
+2. **Recording cleanup password:** recordings older than 1 year are deleted automatically
+   once a day. Vercel needs a password so nobody else can trigger it:
+   1. Make a long random password (32+ characters) with your password manager's generator.
+   2. Vercel → your project → **Settings → Environment Variables** → add
+      `CRON_SECRET` = that password, Type **Secret**.
+   3. **Deployments** → newest → **⋯** → **Redeploy**.
+   Vercel sends this password to the CRM by itself every day; you never need to type it again.

@@ -16,7 +16,7 @@ export type DialerLead = {
 export type DialerNote = { id: string; body: string; created_at: string; author: string };
 export type DialerCall = {
   id: string; started_at: string; duration_seconds: number | null; disposition: string | null;
-  recording_sid: string | null; rep: string;
+  recording_sid: string | null; recording_deleted_at: string | null; rep: string;
 };
 export type LeadContext = { lead: DialerLead; notes: DialerNote[]; calls: DialerCall[] };
 
@@ -52,7 +52,7 @@ export async function loadLeadContext(leadId: string): Promise<LeadContext | nul
   const [{ data: lead }, { data: notes }, { data: calls }] = await Promise.all([
     supabase.from("leads").select("*").eq("id", leadId).maybeSingle(),
     supabase.from("lead_notes").select("id, body, created_at, author:profiles(full_name, email)").eq("lead_id", leadId).order("created_at", { ascending: false }),
-    supabase.from("calls").select("id, started_at, duration_seconds, disposition, recording_sid, rep:profiles(full_name)").eq("lead_id", leadId).order("started_at", { ascending: false }).limit(20),
+    supabase.from("calls").select("id, started_at, duration_seconds, disposition, recording_sid, recording_deleted_at, rep:profiles(full_name)").eq("lead_id", leadId).order("started_at", { ascending: false }).limit(20),
   ]);
   if (!lead) return null;
   type NoteRow = { id: string; body: string; created_at: string; author: { full_name: string; email: string } | null };

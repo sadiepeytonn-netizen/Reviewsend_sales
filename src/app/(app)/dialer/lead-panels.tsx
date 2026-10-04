@@ -119,7 +119,10 @@ export function PastCalls({ calls, allowDownload = false }: { calls: DialerCall[
               {c.duration_seconds ? ` · ${Math.floor(c.duration_seconds / 60)}:${String(c.duration_seconds % 60).padStart(2, "0")}` : ""}
             </p>
             {c.rep && <p className="text-xs text-gray-500">{c.rep}</p>}
-            {c.recording_sid && (
+            {c.recording_sid && c.recording_deleted_at && (
+              <p className="mt-1 text-xs text-gray-400">Recording deleted (older than 1 year)</p>
+            )}
+            {c.recording_sid && !c.recording_deleted_at && (
               <div className="mt-1 flex items-center gap-2">
                 <audio controls preload="none" src={`/api/recordings/${c.id}`} className="h-8 w-full" />
                 {allowDownload && (
