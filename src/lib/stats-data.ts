@@ -16,10 +16,16 @@ export async function loadStats(searchParams: Params, repId?: string) {
     supabase.rpc("rep_stats", { p_from: range.from.toISOString(), p_to: range.to.toISOString() }),
     supabase.rpc("daily_stats", { p_from: trendFrom, p_to: range.toDay, p_rep: repId ?? null }),
   ]);
-  if (error) throw new Error(error.message);
+  // Most likely cause: the step 5 database update hasn't been run yet. Show the
+  // page with a message instead of crashing it.
+  const setupError = error
+    ? error.code === "PGRST202" || /function .*does not exist|Could not find the function/i.test(error.message)
+      ? "The stats database update (supabase/migrations/0005_stats.sql) hasn't been run yet. Run it in the Supabase SQL Editor, then reload."
+      : `Couldn't load stats: ${error.message}`
+    : null;
   const reps = ((rows ?? []) as RepStats[]).map(normalize);
   const query = `?${new URLSearchParams(Object.entries({ range: range.key, from: range.key === "custom" ? range.fromDay : "", to: range.key === "custom" ? range.toDay : "" }).filter(([, v]) => v)).toString()}`;
-  return { range, reps, team: teamTotals(reps), daily: (daily ?? []) as DailyRow[], query };
+  return { range, reps, team: teamTotals(reps), daily: (daily ?? []) as DailyRow[], query, setupError };
 }
 
 function addDaysLocal(day: string, n: number) {

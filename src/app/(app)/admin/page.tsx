@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { duration, money, pct } from "@/lib/stats";
 import { loadStats, rangeLabel } from "@/lib/stats-data";
 import { createClient } from "@/lib/supabase/server";
-import { Card, PageHeader } from "@/components/ui";
+import { Alert, Card, PageHeader } from "@/components/ui";
 import { Funnel } from "@/components/stats/funnel";
 import { Kpi } from "@/components/stats/kpi";
 import { Leaderboard } from "@/components/stats/leaderboard";
@@ -18,7 +18,7 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
   await requireAdmin();
   const sp = await searchParams;
   const supabase = await createClient();
-  const [{ range, reps, team, daily, query }, floor, { data: inv }] = await Promise.all([
+  const [{ range, reps, team, daily, query, setupError }, floor, { data: inv }] = await Promise.all([
     loadStats(sp),
     getFloor(),
     supabase.rpc("lead_inventory"),
@@ -29,6 +29,8 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
   return (
     <>
       <PageHeader title="Dashboard" description={`Team numbers for ${rangeLabel(range)} (Eastern time)`} actions={<RangePicker current={range.key} fromDay={range.fromDay} toDay={range.toDay} />} />
+
+      {setupError && <div className="mb-6"><Alert tone="amber">{setupError}</Alert></div>}
 
       <Card className="mb-6">
         <div className="mb-3 flex items-center justify-between">

@@ -13,7 +13,8 @@ import { TrendChart } from "@/components/stats/trend-chart";
 export default async function RepStatsPage({ params, searchParams }: PageProps<"/admin/stats/[repId]">) {
   await requireAdmin();
   const { repId } = await params;
-  const { range, reps, daily } = await loadStats(await searchParams, repId);
+  const { range, reps, daily, setupError } = await loadStats(await searchParams, repId);
+  if (setupError) throw new Error(setupError);
   const r = reps.find((x) => x.rep_id === repId);
   if (!r) notFound();
 
