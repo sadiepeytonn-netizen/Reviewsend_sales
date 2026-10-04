@@ -74,6 +74,12 @@ export function Dialer({
       </span>
     </>
   );
+  // Florida needs everyone's consent to record, so the rep says it out loud.
+  const recordingReminder = (
+    <div className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-300">
+      <b>Say it first:</b> &quot;Heads up, I record my calls for training.&quot;
+    </div>
+  );
   const dtmfPad = (
     <div className="mt-4 grid w-48 grid-cols-3 gap-2">
       {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((k) => (
@@ -196,7 +202,8 @@ export function Dialer({
               )}
               {onCall && callControls}
             </div>
-            {onCall && showKeypad && dtmfPad}
+            {onCall && recordingReminder}
+              {onCall && showKeypad && dtmfPad}
           </Card>
           {phase === "wrapup" && (
             <SaveNewNumber phone={manualPhone} busy={busy} hadCall={Boolean(callId)} onSave={d.saveManualLead} onSkip={(x) => void d.closeUnknown(x)} />
@@ -250,6 +257,7 @@ export function Dialer({
                   </Button>
                 </div>
               )}
+              {onCall && recordingReminder}
               {onCall && showKeypad && dtmfPad}
             </Card>
 

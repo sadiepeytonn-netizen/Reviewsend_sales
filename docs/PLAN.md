@@ -52,7 +52,9 @@ Twilio subaccount. Planned address: `sales.reviewsend.io`.
   the next business day, alternating morning/afternoon; after 6 → Exhausted
   (admin can recycle). All adjustable in settings.
 - Calling hours: only dial 8am–8pm in the lead's local time.
-- Recording notice played automatically to the prospect when they answer.
+- Recording notice: **no automated message.** Reps say it themselves at the start of every call
+  ("Heads up, I record my calls for training."). The dialer shows a yellow reminder during every
+  call. Calls are still recorded. (Florida needs every party's consent. Have a lawyer check the wording.)
 - Pause with reason (lunch, break, meeting, training, other).
 - Florida caller ID numbers (start with 2–3), registered in Twilio Trust Hub.
 
@@ -206,8 +208,6 @@ The client app's A2P 10DLC texting registration lives in the MAIN Twilio account
   it won't affect the A2P brand. CNAM / Branded Calling: on hold.
 
 ## Open decisions
-- **Recording notice**: owner asked to remove it. On hold until the owner decides (Florida needs
-  every party's consent to record). The current notice stays until then.
 - **Inbound callbacks** (prospects calling the sales numbers back): undecided.
   Options: forward to a phone, voicemail in the CRM routed to the last rep who
   called, forward-then-voicemail (recommended), or ring the rep's browser.

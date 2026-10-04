@@ -47,8 +47,7 @@ export async function POST(req: Request) {
   });
   dial.number(
     {
-      // Plays the recording notice to the prospect when they pick up, before they hear the rep.
-      url: `${base}/api/webhooks/twilio/notice`,
+      // No automated notice: the rep tells the prospect the call is recorded (reminder on the dialer).
       statusCallback: `${base}/api/webhooks/twilio/status?${q}`,
       statusCallbackEvent: ["answered", "completed"],
     },
