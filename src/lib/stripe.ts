@@ -20,9 +20,18 @@ export function stripeConfig() {
   return { ...c, missing, ready: missing.length === 0 };
 }
 
+// Pinned to the API version chosen for the webhook in the Stripe dashboard, so
+// API responses and webhook events have the same shape. (The library's own
+// default can be newer than what the account offers.)
+export const STRIPE_API_VERSION = "2026-08-26.dahlia";
+
 let client: Stripe | null = null;
 export function stripe(): Stripe {
-  if (!client) client = new Stripe(stripeConfig().secretKey!);
+  if (!client) {
+    client = new Stripe(stripeConfig().secretKey!, {
+      apiVersion: STRIPE_API_VERSION as Stripe.LatestApiVersion,
+    });
+  }
   return client;
 }
 
