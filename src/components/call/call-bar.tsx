@@ -2,15 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Mic, MicOff, PhoneCall, PhoneOff } from "lucide-react";
+import { Headphones, Mic, MicOff, PhoneCall, PhoneOff } from "lucide-react";
+import type { MonitorMode } from "@/lib/twilio";
+import { MODE_LABELS } from "@/components/live/live-section";
 import { formatPhone } from "@/lib/phone";
 import { mmss, PAUSE_LABELS, useClock, useDialer } from "./dialer-provider";
 
 /** Shown on every page except the dialer while a call or dialing session is going. */
-export function CallBar() {
+export function CallBar({ modes }: { modes: MonitorMode[] }) {
   const d = useDialer();
   const pathname = usePathname();
   const now = useClock(d.callState === "open");
+  if (d.monitor) return <MonitorBar modes={modes} />;
   if (pathname.startsWith("/dialer") || d.phase === "idle") return null;
 
   const name = d.ctx?.lead.contact_name || d.ctx?.lead.business_name || (d.manualPhone ? formatPhone(d.manualPhone) : "");
@@ -48,6 +51,35 @@ export function CallBar() {
         {d.phase === "paused" ? ` · Paused (${PAUSE_LABELS[d.pauseReason]})` : name ? ` · next up: ${name}` : ""}
       </span>
       <Link href="/dialer" className="ml-auto rounded-md bg-white px-2.5 py-1 font-medium text-brand-700">Back to dialer</Link>
+    </div>
+  );
+}
+
+/** Shown on every page while listening in on another rep's call. The rep never sees anything. */
+function MonitorBar({ modes }: { modes: MonitorMode[] }) {
+  const d = useDialer();
+  const m = d.monitor!;
+  return (
+    <div className="sticky top-0 z-40 -mx-4 mb-4 flex flex-wrap items-center gap-3 bg-violet-700 px-4 py-2 text-sm text-white shadow md:-mx-10 md:px-10">
+      <Headphones className="h-4 w-4" />
+      <span>
+        {m.connected ? "On" : "Joining"} <b>{m.repName}</b>&apos;s call · {MODE_LABELS[m.mode].help}
+      </span>
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        {modes.map((mode) => (
+          <button
+            key={mode}
+            onClick={() => void d.switchMonitorMode(mode)}
+            disabled={!m.connected}
+            className={`rounded-md px-2.5 py-1 font-medium disabled:opacity-50 ${m.mode === mode ? "bg-white text-violet-800" : "bg-white/15 hover:bg-white/25"}`}
+          >
+            {MODE_LABELS[mode].label}
+          </button>
+        ))}
+        <button onClick={d.leaveMonitor} className="rounded-md bg-red-600 px-2.5 py-1 font-medium ring-1 ring-white/40 hover:bg-red-700">
+          Leave
+        </button>
+      </div>
     </div>
   );
 }

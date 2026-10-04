@@ -350,3 +350,25 @@ No new keys or Vercel settings are needed. Vercel deploys the new code by itself
 
 Until this file is run, the keypad and calendar booking show an error, and the
 coaching switches don't appear on the user pages.
+
+---
+
+# Update: Live (listen / whisper / barge)
+
+## Database
+Copy `supabase/migrations/0008_live_coaching.sql` from GitHub → Supabase **SQL Editor** →
+**+ New query** → paste → **Run** (once; choose **Run without RLS** if asked).
+
+## Test it (two people, two computers or two browsers)
+1. Rep A signs in, opens the **Dialer**, and calls your own cell phone with the keypad. Answer it.
+2. Check: you hear ringing before answering, the timer starts when you answer, and the call is clear.
+3. You (admin) look at **Live** in the menu → click Rep A → **Listen**. You should hear both sides.
+   Rep A should see nothing.
+4. Click **Whisper** and talk: Rep A hears you; your cell phone doesn't.
+5. Click **Barge**: everyone hears you. Click **Leave**.
+6. Hang up from the cell phone: Rep A's call should end by itself and show the outcome screen.
+7. Call a business with a phone menu ("press 1…") and try the keypad.
+8. Next day: open that lead and play the recording.
+
+If calls misbehave, go to **Dashboard → Phone system → Switch to direct calls**. That puts calls
+back the old way at once (no listening) while it gets fixed.

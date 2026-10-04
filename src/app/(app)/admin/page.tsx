@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { duration, money, pct } from "@/lib/stats";
 import { loadStats, rangeLabel } from "@/lib/stats-data";
 import { createClient } from "@/lib/supabase/server";
-import { Alert, Card, PageHeader } from "@/components/ui";
+import { Alert, Button, Card, PageHeader } from "@/components/ui";
 import { Funnel } from "@/components/stats/funnel";
 import { Kpi } from "@/components/stats/kpi";
 import { Leaderboard } from "@/components/stats/leaderboard";
@@ -11,6 +11,7 @@ import { LiveFloor } from "@/components/stats/live-floor";
 import { RangePicker } from "@/components/stats/range-picker";
 import { TrendChart } from "@/components/stats/trend-chart";
 import { getFloor } from "./actions";
+import { setConferenceCalls } from "@/components/live/actions";
 
 type InventoryRow = { list: "EAST" | "WEST" | null; ready_now: number; waiting: number; total: number };
 
@@ -18,6 +19,8 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
   await requireAdmin();
   const sp = await searchParams;
   const supabase = await createClient();
+  const { data: phone } = await supabase.from("settings").select("conference_calls").eq("id", 1).maybeSingle();
+  const conferenceCalls = (phone as { conference_calls?: boolean } | null)?.conference_calls;
   const [{ range, reps, team, daily, query, setupError }, floor, { data: inv }] = await Promise.all([
     loadStats(sp),
     getFloor(),
@@ -94,6 +97,24 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
           })}
         </div>
       </Card>
+      {conferenceCalls !== undefined && (
+        <Card className="mt-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="font-medium text-gray-900">Phone system</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                {conferenceCalls
+                  ? "Conference calls: listening in works (Live, in the menu)."
+                  : "Direct calls: listening in is off. Use this only if conference calls give trouble."}
+              </p>
+            </div>
+            <form action={setConferenceCalls}>
+              <input type="hidden" name="on" value={conferenceCalls ? "false" : "true"} />
+              <Button variant="secondary">{conferenceCalls ? "Switch to direct calls" : "Switch to conference calls"}</Button>
+            </form>
+          </div>
+        </Card>
+      )}
     </>
   );
 }

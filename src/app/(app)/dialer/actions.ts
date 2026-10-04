@@ -103,12 +103,20 @@ export async function setPresence(input: z.infer<typeof presenceSchema>): Promis
   return error ? { error: friendly(error.message) } : {};
 }
 
-export async function startCall(leadId: string): Promise<{ callId?: string; error?: string }> {
+/** Conference calls are on unless the admin switched back to direct calls. */
+async function conferenceOn(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data } = await supabase.from("settings").select("conference_calls").eq("id", 1).maybeSingle();
+  return (data as { conference_calls?: boolean } | null)?.conference_calls === true;
+}
+
+export type StartedCall = { callId?: string; conference?: boolean; error?: string };
+
+export async function startCall(leadId: string): Promise<StartedCall> {
   await requireUser();
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("start_call", { p_lead: z.uuid().parse(leadId) });
   if (error) return { error: friendly(error.message) };
-  return { callId: (data as { call_id: string }).call_id };
+  return { callId: (data as { call_id: string }).call_id, conference: await conferenceOn(supabase) };
 }
 
 const disposeSchema = z.object({
@@ -182,12 +190,12 @@ export async function lookupNumber(raw: string): Promise<LookupResult> {
   return { status: "new", phone };
 }
 
-export async function startManualCall(phone: string, leadId: string | null): Promise<{ callId?: string; error?: string }> {
+export async function startManualCall(phone: string, leadId: string | null): Promise<StartedCall> {
   await requireUser();
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("start_manual_call", { p_phone: phone, p_lead: leadId });
   if (error) return { error: friendly(error.message) };
-  return { callId: (data as { call_id: string }).call_id };
+  return { callId: (data as { call_id: string }).call_id, conference: await conferenceOn(supabase) };
 }
 
 /** After a keypad call to an unknown number: save it as a lead (never a duplicate). */
@@ -238,4 +246,43 @@ export async function closeManualCall(callId: string, disposition: "no_answer" |
     p_disposition: z.enum(["no_answer", "bad_number"]).parse(disposition),
   });
   return error ? { error: friendly(error.message) } : {};
+}
+
+// ---------------------------------------------------------------------------
+// Conference calls (needed for listening in)
+// ---------------------------------------------------------------------------
+
+/** Has the prospect picked up / hung up? (Conference calls connect the rep right away.) */
+export async function getCallProgress(callId: string): Promise<{ answered: boolean; ended: boolean }> {
+  await requireUser();
+  const supabase = await createClient();
+  const { data } = await supabase.from("calls").select("answered_at, ended_at").eq("id", z.uuid().parse(callId)).maybeSingle();
+  return { answered: Boolean(data?.answered_at), ended: Boolean(data?.ended_at) };
+}
+
+/** Keypad tones for phone menus on a conference call. */
+export async function sendCallDigits(callId: string, digits: string): Promise<{ error?: string }> {
+  const me = await requireUser();
+  const { findConference, twilioClient } = await import("@/lib/twilio");
+  const { appOrigin } = await import("@/lib/origin");
+  const supabase = await createClient();
+  const { data: call } = await supabase
+    .from("calls")
+    .select("id, rep_id, prospect_call_sid, ended_at")
+    .eq("id", z.uuid().parse(callId))
+    .maybeSingle();
+  if (!call || call.rep_id !== me.id || !call.prospect_call_sid || call.ended_at) return { error: "The call has ended." };
+  const d = digits.replace(/[^0-9*#]/g, "").slice(0, 20);
+  if (!d) return {};
+  try {
+    const conf = await findConference(call.id);
+    if (!conf) return { error: "The call has ended." };
+    await twilioClient()
+      .conferences(conf)
+      .participants(call.prospect_call_sid)
+      .update({ announceUrl: `${await appOrigin()}/api/webhooks/twilio/digits?d=${encodeURIComponent(d)}` });
+    return {};
+  } catch {
+    return { error: "Couldn't send the keypad tones." };
+  }
 }

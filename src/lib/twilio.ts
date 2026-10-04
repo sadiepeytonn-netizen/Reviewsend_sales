@@ -71,3 +71,26 @@ export function twiml(xml: string, status = 200) {
 }
 
 export const VoiceResponse = twilio.twiml.VoiceResponse;
+
+/** Server-side Twilio API client (uses the subaccount's API key). */
+export function twilioClient() {
+  const c = twilioConfig();
+  return twilio(c.apiKeySid!, c.apiKeySecret!, { accountSid: c.accountSid! });
+}
+
+/** Each call's private conference room. */
+export const conferenceName = (callId: string) => `call-${callId}`;
+
+/** The live conference for a call (null if it has ended). */
+export async function findConference(callId: string): Promise<string | null> {
+  const list = await twilioClient().conferences.list({ friendlyName: conferenceName(callId), status: "in-progress", limit: 1 });
+  return list[0]?.sid ?? null;
+}
+
+export type MonitorMode = "listen" | "whisper" | "barge";
+
+/** What a person may do on other reps' calls. Admins can do everything. */
+export function allowedModes(p: { role: string; can_listen?: boolean | null; can_whisper?: boolean | null; can_barge?: boolean | null }): MonitorMode[] {
+  if (p.role === "admin") return ["listen", "whisper", "barge"];
+  return [p.can_listen && "listen", p.can_whisper && "whisper", p.can_barge && "barge"].filter(Boolean) as MonitorMode[];
+}

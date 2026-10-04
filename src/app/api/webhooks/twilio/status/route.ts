@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { readTwilioWebhook } from "@/lib/twilio";
+import { readTwilioWebhook, twilioClient } from "@/lib/twilio";
 
 // Status of the prospect's side of the call: answered, then completed.
 export async function POST(req: Request) {
@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   if (!callId) return new Response("ok");
 
   const supabase = createAdminClient();
-  const { data: call } = await supabase.from("calls").select("id, rep_id, lead_id, answered_at, ended_at").eq("id", callId).maybeSingle();
+  const { data: call } = await supabase.from("calls").select("*").eq("id", callId).maybeSingle();
   if (!call) return new Response("ok");
 
   const status = params.CallStatus;
@@ -31,6 +31,10 @@ export async function POST(req: Request) {
         call_id: call.id,
         data: { status, talk_seconds: duration, answered },
       });
+    }
+    // Conference call: the prospect is gone (hung up, no answer, busy), so end the rep's side too.
+    if (call.conference && call.twilio_call_sid) {
+      await twilioClient().calls(call.twilio_call_sid).update({ status: "completed" }).catch(() => {});
     }
   }
   return new Response("ok");

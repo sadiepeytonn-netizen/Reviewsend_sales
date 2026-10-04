@@ -97,11 +97,20 @@ browser asks "Leave site?" first).
 - Imports map "Owner", "Owner name", "Contact name", "First/Last name" to the owner's name.
   HubSpot's "Company owner" (a HubSpot user) is not mapped.
 
-### Listen / whisper / barge (switches built; call coaching itself is next)
-- All reps can listen by default. Whisper and barge are off by default. The admin turns each one
-  on or off per rep on the rep's user page. Admin can always listen, whisper, and barge.
-- Reps are never shown that someone is listening.
-- Needs the calls to run as Twilio conferences. That will be a separate update, tested with real calls.
+### Live: listen / whisper / barge
+- A **Live** section in the menu (under the pages) lists every rep with their status. Click a rep
+  who's on a call, then **Listen**, **Whisper**, or **Barge**. You can switch modes while on the
+  call, or **Leave**. A purple bar on every page shows whose call you're on.
+- All reps can listen by default. Whisper and barge are off by default. The admin turns each one on
+  or off per rep on the rep's user page. Admin can always do all three. People with none of them
+  don't see the Live section.
+- Reps are never shown that someone is listening (no beep, nothing on screen). Each listen-in is
+  logged under the listener, for the admin only.
+- To listen, you must not be dialing (pause or stop first).
+- How it works: each call is a private Twilio conference room (rep + prospect). Only the prospect's
+  side is recorded, so whispers are never in recordings. Keypad tones for phone menus are sent
+  through the server (about a half-second delay per key).
+- Backup switch on the admin Dashboard (**Phone system**): direct calls (the old way, no listening).
 
 ### Recordings
 - Kept 1 year.

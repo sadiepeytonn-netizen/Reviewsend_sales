@@ -8,10 +8,12 @@ import {
   claimNext,
   closeManualCall,
   dispose,
+  getCallProgress,
   getVoiceToken,
   lookupNumber,
   releaseLead,
   saveCallAsLead,
+  sendCallDigits,
   setPresence,
   startCall,
   startManualCall,
@@ -19,6 +21,11 @@ import {
   type LeadContext,
 } from "@/app/(app)/dialer/actions";
 import type { Disposition } from "@/app/(app)/dialer/wrap-up";
+import { switchMonitor } from "@/components/live/actions";
+import type { MonitorMode } from "@/lib/twilio";
+
+/** Listening in on another rep's call. */
+export type Monitor = { callId: string; repName: string; mode: MonitorMode; callSid: string | null; connected: boolean };
 
 export type Phase = "idle" | "loading" | "empty" | "lead" | "calling" | "wrapup" | "paused";
 export type PauseReason = "lunch" | "break" | "meeting" | "training" | "other";
@@ -74,6 +81,10 @@ type DialerApi = {
   cancelManual: () => Promise<void>;
   saveManualLead: (input: { businessName: string; ownerName: string; email?: string }) => Promise<{ error?: string }>;
   closeUnknown: (d: "no_answer" | "bad_number") => Promise<void>;
+  monitor: Monitor | null;
+  listenIn: (callId: string, repName: string, mode: MonitorMode) => Promise<void>;
+  switchMonitorMode: (mode: MonitorMode) => Promise<void>;
+  leaveMonitor: () => void;
 };
 
 const DialerContext = createContext<DialerApi | null>(null);
@@ -107,6 +118,10 @@ export function DialerProvider({ children }: { children: ReactNode }) {
   const [pausedAt, setPausedAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [paying, setPaying] = useState(false);
+  // Conference calls connect the rep right away; "answered" comes from the server.
+  const [conference, setConference] = useState(false);
+  const [monitor, setMonitor] = useState<Monitor | null>(null);
+  const monitorCallRef = useRef<Call | null>(null);
 
   const deviceRef = useRef<Device | null>(null);
   const callRef = useRef<Call | null>(null);
@@ -188,6 +203,10 @@ export function DialerProvider({ children }: { children: ReactNode }) {
   }, [phase, mode, list, loadNext]);
 
   const startDialing = useCallback(async (prewarm: boolean) => {
+    if (monitorCallRef.current) {
+      setError("Leave the call you're listening to before dialing.");
+      return;
+    }
     setBusy(true);
     setError(null);
     setMode("queue");
@@ -237,6 +256,10 @@ export function DialerProvider({ children }: { children: ReactNode }) {
   type Target = { manual: false; leadId: string } | { manual: true; phone: string; leadId: string | null };
 
   const placeCall = useCallback(async (target: Target) => {
+    if (monitorCallRef.current) {
+      setError("Leave the call you're listening to before calling.");
+      return;
+    }
     setError(null);
     setBusy(true);
     const device = await ensureDevice();
@@ -251,6 +274,8 @@ export function DialerProvider({ children }: { children: ReactNode }) {
       return;
     }
     setCallId(started.callId);
+    const conf = Boolean(started.conference);
+    setConference(conf);
     endedRef.current = false;
     setCallState("connecting");
     setAnsweredAt(null);
@@ -262,6 +287,7 @@ export function DialerProvider({ children }: { children: ReactNode }) {
       callRef.current = c;
       c.on("ringing", () => setCallState("ringing"));
       c.on("accept", () => {
+        if (conf) return setCallState("ringing"); // the rep is in the room; the prospect is still ringing
         setCallState("open");
         setAnsweredAt(Date.now());
       });
@@ -295,7 +321,72 @@ export function DialerProvider({ children }: { children: ReactNode }) {
     setMuted(c.isMuted());
   }, []);
 
-  const sendDigits = useCallback((d: string) => callRef.current?.sendDigits(d), []);
+  const sendDigits = useCallback((d: string) => {
+    if (!conference) return callRef.current?.sendDigits(d);
+    if (callId) void sendCallDigits(callId, d).then((r) => r.error && setError(r.error));
+  }, [conference, callId]);
+
+  // Conference call: check every 1.5s whether the prospect picked up.
+  useEffect(() => {
+    if (!conference || phase !== "calling" || !callId || callState === "open") return;
+    const t = setInterval(async () => {
+      const p = await getCallProgress(callId);
+      if (p.answered && !endedRef.current) {
+        setCallState("open");
+        setAnsweredAt(Date.now());
+      }
+    }, 1500);
+    return () => clearInterval(t);
+  }, [conference, phase, callId, callState]);
+
+  // ---- Listening in on another rep's call ------------------------------------
+  const listenIn = useCallback(async (targetCallId: string, repName: string, mode: MonitorMode) => {
+    if (monitorCallRef.current) monitorCallRef.current.disconnect();
+    if (phase !== "idle" && phase !== "paused") {
+      setError("Pause or stop dialing before listening in on a call.");
+      return;
+    }
+    setError(null);
+    const device = await ensureDevice();
+    if (!device) return;
+    setMonitor({ callId: targetCallId, repName, mode, callSid: null, connected: false });
+    try {
+      const c = await device.connect({ params: { monitor: targetCallId, mode } });
+      monitorCallRef.current = c;
+      c.mute(mode === "listen"); // can't be heard anyway; keeps the mic quiet
+      c.on("accept", () => {
+        setMonitor((m) => (m ? { ...m, callSid: c.parameters.CallSid ?? null, connected: true } : m));
+      });
+      const done = () => {
+        if (monitorCallRef.current === c) monitorCallRef.current = null;
+        setMonitor((m) => (m?.callId === targetCallId ? null : m));
+      };
+      c.on("disconnect", done);
+      c.on("cancel", done);
+      c.on("reject", done);
+      c.on("error", (e: { message?: string }) => {
+        setError(`Listening error: ${e.message ?? "unknown"}`);
+        done();
+      });
+    } catch (e) {
+      setError(`Couldn't listen in: ${(e as Error).message}. Check that the browser can use your microphone.`);
+      setMonitor(null);
+    }
+  }, [phase, ensureDevice]);
+
+  const switchMonitorMode = useCallback(async (mode: MonitorMode) => {
+    if (!monitor?.callSid) return;
+    const res = await switchMonitor(monitor.callId, monitor.callSid, mode);
+    if (res.error) return setError(res.error);
+    monitorCallRef.current?.mute(mode === "listen");
+    setMonitor((m) => (m ? { ...m, mode } : m));
+  }, [monitor]);
+
+  const leaveMonitor = useCallback(() => {
+    monitorCallRef.current?.disconnect();
+    monitorCallRef.current = null;
+    setMonitor(null);
+  }, []);
 
   // ---- Keypad (manual) calls ------------------------------------------------
 
@@ -315,6 +406,10 @@ export function DialerProvider({ children }: { children: ReactNode }) {
   }, [list, loadNext]);
 
   const dialNumber = useCallback(async (raw: string) => {
+    if (monitorCallRef.current) {
+      setError("Leave the call you're listening to before calling.");
+      return;
+    }
     if (phase === "calling" || phase === "wrapup") {
       setError("Finish your current call (pick an outcome) before dialing another number.");
       return;
@@ -423,6 +518,7 @@ export function DialerProvider({ children }: { children: ReactNode }) {
     setList, setPauseReason, setError, setPaying, setPhase,
     startDialing, stopDialing, loadNext, pause, resume, startSingle, call, hangUp, toggleMute, sendDigits,
     submitDisposition, addNote, patchLead, dialNumber, cancelManual, saveManualLead, closeUnknown,
+    monitor, listenIn, switchMonitorMode, leaveMonitor,
   };
   return <DialerContext.Provider value={api}>{children}</DialerContext.Provider>;
 }

@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { VoiceResponse, readTwilioWebhook, twiml } from "@/lib/twilio";
+import { VoiceResponse, readTwilioWebhook, twilioClient, twiml } from "@/lib/twilio";
 
 // Runs when the dial finishes. Backup for the status webhook (e.g. the prospect
 // never answered, so no "completed" came for an answered call).
@@ -10,8 +10,15 @@ export async function POST(req: Request) {
 
   if (callId) {
     const supabase = createAdminClient();
-    const { data: call } = await supabase.from("calls").select("id, rep_id, lead_id, answered_at, ended_at").eq("id", callId).maybeSingle();
-    if (call && !call.ended_at) {
+    const { data: call } = await supabase.from("calls").select("*").eq("id", callId).maybeSingle();
+    if (call?.conference) {
+      // The rep left the room. Make sure the prospect's side stops too (ringing or talking);
+      // its status webhook then records how the call ended and the talk time.
+      if (call.prospect_call_sid && !call.ended_at) {
+        const c = twilioClient().calls(call.prospect_call_sid);
+        await c.update({ status: "canceled" }).catch(() => c.update({ status: "completed" })).catch(() => {});
+      }
+    } else if (call && !call.ended_at) {
       const status = params.DialCallStatus ?? "completed";
       const duration = call.answered_at ? Number.parseInt(params.DialCallDuration ?? "0", 10) || 0 : 0;
       await supabase

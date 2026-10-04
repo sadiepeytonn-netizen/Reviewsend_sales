@@ -6,6 +6,8 @@ import { Heartbeat } from "@/components/heartbeat";
 import { CallBar } from "@/components/call/call-bar";
 import { DialerProvider } from "@/components/call/dialer-provider";
 import { Nav } from "@/components/nav";
+import { LiveSection } from "@/components/live/live-section";
+import { allowedModes } from "@/lib/twilio";
 import { signOut } from "@/app/login/actions";
 
 // The logged-in app: sidebar + page. Every page inside (app) requires an
@@ -13,6 +15,7 @@ import { signOut } from "@/app/login/actions";
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const profile = await requireUser();
   if (profile.must_change_password) redirect("/change-password");
+  const modes = allowedModes(profile);
 
   return (
     <DialerProvider>
@@ -27,6 +30,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         </div>
 
         <Nav role={profile.role} />
+        {modes.length > 0 && <LiveSection />}
 
         <div className="mt-6 border-t border-gray-100 pt-4 md:mt-auto">
           <div className="px-2">
@@ -50,7 +54,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       </aside>
 
       <main className="min-w-0 flex-1 px-4 pb-6 md:px-10 md:pb-8">
-        <CallBar />
+        <CallBar modes={modes} />
         <div className="pt-6 md:pt-8">{children}</div>
       </main>
     </div>
