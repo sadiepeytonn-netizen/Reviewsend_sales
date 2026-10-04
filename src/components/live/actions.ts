@@ -12,16 +12,16 @@ export type LiveRep = {
   status: "offline" | "idle" | "ready" | "on_call" | "wrap_up" | "paused";
   since: string | null;
   /** Set while the rep is on a call that can be listened to. */
-  call: { id: string; answered: boolean; who: string | null } | null;
+  call: { id: string; answered: boolean; owner: string | null; business: string | null; phone: string; leadId: string | null } | null;
 };
 
-export type LiveData = { modes: MonitorMode[]; conference: boolean; reps: LiveRep[] };
+export type LiveData = { modes: MonitorMode[]; conference: boolean; isAdmin: boolean; reps: LiveRep[] };
 
 /** The floor, for the sidebar's Live section. Only for people allowed to listen in. */
 export async function getLive(): Promise<LiveData> {
   const me = await requireUser();
   const modes = allowedModes(me);
-  if (!modes.length) return { modes, conference: false, reps: [] };
+  if (!modes.length) return { modes, conference: false, isAdmin: false, reps: [] };
 
   // Allowed listeners see every rep's status (reps can't read each other's rows directly).
   const supabase = createAdminClient();
@@ -34,10 +34,10 @@ export async function getLive(): Promise<LiveData> {
   const { data: calls } = callIds.length
     ? await supabase
         .from("calls")
-        .select("id, conference, answered_at, ended_at, lead:leads(business_name, contact_name)")
+        .select("id, conference, answered_at, ended_at, to_number, lead_id, lead:leads(business_name, contact_name)")
         .in("id", callIds)
     : { data: [] };
-  type C = { id: string; conference: boolean; answered_at: string | null; ended_at: string | null; lead: { business_name: string; contact_name: string | null } | null };
+  type C = { id: string; conference: boolean; answered_at: string | null; ended_at: string | null; to_number: string; lead_id: string | null; lead: { business_name: string; contact_name: string | null } | null };
   const callById = new Map(((calls ?? []) as unknown as C[]).map((c) => [c.id, c]));
   const byRep = new Map((presence ?? []).map((p) => [p.rep_id, p]));
   const stale = (iso: string | null) => !iso || Date.now() - Date.parse(iso) > 2 * 60_000;
@@ -53,13 +53,20 @@ export async function getLive(): Promise<LiveData> {
       status: offline ? "offline" : p!.status,
       since: offline ? null : p!.status_since,
       call: c && c.conference && !c.ended_at
-        ? { id: c.id, answered: Boolean(c.answered_at), who: c.lead?.contact_name || c.lead?.business_name || null }
+        ? {
+            id: c.id,
+            answered: Boolean(c.answered_at),
+            owner: c.lead?.contact_name || null,
+            business: c.lead?.business_name || null,
+            phone: c.to_number,
+            leadId: c.lead_id,
+          }
         : null,
     });
   }
   const order = { on_call: 0, wrap_up: 1, ready: 2, paused: 3, idle: 4, offline: 5 } as const;
   reps.sort((a, b) => order[a.status] - order[b.status] || a.name.localeCompare(b.name));
-  return { modes, conference: (settings as { conference_calls?: boolean } | null)?.conference_calls === true, reps };
+  return { modes, conference: (settings as { conference_calls?: boolean } | null)?.conference_calls === true, isAdmin: me.role === "admin", reps };
 }
 
 /** Switch between listen / whisper / barge while already on the call. */

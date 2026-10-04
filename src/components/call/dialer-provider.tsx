@@ -25,7 +25,8 @@ import { switchMonitor } from "@/components/live/actions";
 import type { MonitorMode } from "@/lib/twilio";
 
 /** Listening in on another rep's call. */
-export type Monitor = { callId: string; repName: string; mode: MonitorMode; callSid: string | null; connected: boolean };
+export type MonitorTarget = { withWho: string; phone: string; leadHref: string | null };
+export type Monitor = MonitorTarget & { callId: string; repName: string; mode: MonitorMode; callSid: string | null; connected: boolean };
 
 export type Phase = "idle" | "loading" | "empty" | "lead" | "calling" | "wrapup" | "paused";
 export type PauseReason = "lunch" | "break" | "meeting" | "training" | "other";
@@ -82,7 +83,7 @@ type DialerApi = {
   saveManualLead: (input: { businessName: string; ownerName: string; email?: string }) => Promise<{ error?: string }>;
   closeUnknown: (d: "no_answer" | "bad_number") => Promise<void>;
   monitor: Monitor | null;
-  listenIn: (callId: string, repName: string, mode: MonitorMode) => Promise<void>;
+  listenIn: (callId: string, repName: string, mode: MonitorMode, target: MonitorTarget) => Promise<void>;
   switchMonitorMode: (mode: MonitorMode) => Promise<void>;
   leaveMonitor: () => void;
 };
@@ -340,7 +341,7 @@ export function DialerProvider({ children }: { children: ReactNode }) {
   }, [conference, phase, callId, callState]);
 
   // ---- Listening in on another rep's call ------------------------------------
-  const listenIn = useCallback(async (targetCallId: string, repName: string, mode: MonitorMode) => {
+  const listenIn = useCallback(async (targetCallId: string, repName: string, mode: MonitorMode, target: MonitorTarget) => {
     if (monitorCallRef.current) monitorCallRef.current.disconnect();
     if (phase !== "idle" && phase !== "paused") {
       setError("Pause or stop dialing before listening in on a call.");
@@ -349,7 +350,7 @@ export function DialerProvider({ children }: { children: ReactNode }) {
     setError(null);
     const device = await ensureDevice();
     if (!device) return;
-    setMonitor({ callId: targetCallId, repName, mode, callSid: null, connected: false });
+    setMonitor({ ...target, callId: targetCallId, repName, mode, callSid: null, connected: false });
     try {
       const c = await device.connect({ params: { monitor: targetCallId, mode } });
       monitorCallRef.current = c;

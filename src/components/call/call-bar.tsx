@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Headphones, Mic, MicOff, PhoneCall, PhoneOff } from "lucide-react";
 import type { MonitorMode } from "@/lib/twilio";
-import { MODE_LABELS } from "@/components/live/live-section";
+import { MODE_LABELS, ProspectPhone } from "@/components/live/live-section";
 import { formatPhone } from "@/lib/phone";
 import { mmss, PAUSE_LABELS, useClock, useDialer } from "./dialer-provider";
 
@@ -62,8 +62,11 @@ function MonitorBar({ modes }: { modes: MonitorMode[] }) {
   return (
     <div className="sticky top-0 z-40 -mx-4 mb-4 flex flex-wrap items-center gap-3 bg-violet-700 px-4 py-2 text-sm text-white shadow md:-mx-10 md:px-10">
       <Headphones className="h-4 w-4" />
-      <span>
-        {m.connected ? "On" : "Joining"} <b>{m.repName}</b>&apos;s call · {MODE_LABELS[m.mode].help}
+      <span className="min-w-0">
+        {m.connected ? "On" : "Joining"} <b>{m.repName}</b>&apos;s call with{" "}
+        {m.withWho && <b>{m.withWho} · </b>}
+        <ProspectPhone phone={m.phone} href={m.leadHref} className="font-semibold" />
+        <span className="text-white/70"> · {MODE_LABELS[m.mode].help}</span>
       </span>
       <div className="ml-auto flex flex-wrap items-center gap-2">
         {modes.map((mode) => (

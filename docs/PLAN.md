@@ -98,7 +98,9 @@ browser asks "Leave site?" first).
   HubSpot's "Company owner" (a HubSpot user) is not mapped.
 
 ### Live: listen / whisper / barge
-- A **Live** section in the menu (under the pages) lists every rep with their status. Click a rep
+- A **Live** section in the menu (under the pages) lists every rep with their status. A rep on a
+  call also shows who they're talking to: owner's name, business name, and phone number (admin can
+  click the number to open the lead). Click a rep
   who's on a call, then **Listen**, **Whisper**, or **Barge**. You can switch modes while on the
   call, or **Leave**. A purple bar on every page shows whose call you're on.
 - All reps can listen by default. Whisper and barge are off by default. The admin turns each one on
