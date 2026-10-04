@@ -9,6 +9,7 @@ import { Badge, Button, Card, PageHeader } from "@/components/ui";
 import { setActive } from "../actions";
 import { CommissionPlanForm } from "./commission-plan-form";
 import { ProfileForm, ResetPasswordForm } from "./user-forms";
+import { formatTime } from "@/lib/time";
 
 export default async function UserPage({ params }: PageProps<"/admin/users/[id]">) {
   const { id } = await params;
@@ -83,7 +84,7 @@ export default async function UserPage({ params }: PageProps<"/admin/users/[id]"
                   {plans.map((row, i) => (
                     <li key={row.id} className="py-3">
                       <p className="font-medium text-gray-900">
-                        From {new Date(row.effective_from).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+                        From {formatTime(row.effective_from)}
                         {i === 0 && <span className="ml-2"><Badge tone="blue">Current</Badge></span>}
                       </p>
                       <ul className="mt-1 list-disc pl-5 text-gray-600">

@@ -5,6 +5,7 @@ import { formatPhone } from "@/lib/phone";
 import { createClient } from "@/lib/supabase/server";
 import { Badge, Button, Card, Input, PageHeader } from "@/components/ui";
 import { AddDncForm, UploadDncForm } from "./dnc-forms";
+import { formatTime } from "@/lib/time";
 
 type Row = { phone_e164: string; reason: string | null; source: string; created_at: string };
 
@@ -65,7 +66,7 @@ export default async function DncPage({ searchParams }: PageProps<"/admin/dnc">)
                   <td className="whitespace-nowrap px-4 py-2 font-medium text-gray-900">{formatPhone(r.phone_e164)}</td>
                   <td className="px-4 py-2"><Badge>{SOURCE_LABELS[r.source] ?? r.source}</Badge></td>
                   <td className="hidden px-4 py-2 text-gray-600 sm:table-cell">{r.reason ?? ""}</td>
-                  <td className="whitespace-nowrap px-4 py-2 text-gray-600">{new Date(r.created_at).toLocaleDateString("en-US", { dateStyle: "medium" })}</td>
+                  <td className="whitespace-nowrap px-4 py-2 text-gray-600">{formatTime(r.created_at, "date")}</td>
                 </tr>
               ))}
             </tbody>

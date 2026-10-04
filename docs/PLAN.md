@@ -79,6 +79,15 @@ Twilio subaccount. Planned address: `sales.reviewsend.io`.
 - Each rep gets a private calendar link to subscribe to in Google Calendar /
   iPhone (one-way). Two-way Google sync is a later project.
 
+### Calendar details (built in step 4)
+- Week view with time blocks (business name, time, phone); phones get a day-by-day list.
+  Admin sees everyone (color per rep) with a rep filter.
+- Appointment outcomes: Showed (lead → Demo completed), Demo missed, Canceled,
+  Reschedule, and Undo. Past appointments with no outcome are listed at the top
+  of the calendar until marked.
+- Private subscribe link per person (.ics) for Google Calendar / iPhone (one-way).
+- All times in the CRM are shown in Eastern time (calendar grid uses the device's time).
+
 ### Payments
 - The CRM takes over the payment step. On **Sold**, the rep enters setup fee and
   monthly price, then either takes the card now (Stripe Checkout) or sends a
@@ -127,7 +136,7 @@ The client app's A2P 10DLC texting registration lives in the MAIN Twilio account
 1. ✅ Project setup, logins, roles, users, commission plans
 2. ✅ Lead import, dedupe, lists, Do Not Call
 3. ✅ Dialer + dispositions + notes (test with one rep)
-4. Calendar
+4. ✅ Calendar
 5. Event tracking + dashboards
 6. Stripe payments + commission
 

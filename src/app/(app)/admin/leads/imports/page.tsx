@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm-button";
 import { undoImport } from "./actions";
+import { formatTime } from "@/lib/time";
 
 type Batch = {
   id: string; file_name: string; lead_source: string; total_rows: number; inserted_count: number; merged_count: number;
@@ -50,7 +51,7 @@ export default async function ImportsPage() {
               {batches.map((b) => (
                 <tr key={b.id}>
                   <td className="whitespace-nowrap px-4 py-2 text-gray-600">
-                    {new Date(b.created_at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+                    {formatTime(b.created_at)}
                   </td>
                   <td className="max-w-[14rem] truncate px-4 py-2 font-medium text-gray-900" title={b.file_name}>{b.file_name}</td>
                   <td className="px-4 py-2 text-gray-600">{b.lead_source}</td>

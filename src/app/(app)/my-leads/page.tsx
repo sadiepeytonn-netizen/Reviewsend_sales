@@ -4,6 +4,7 @@ import { STATUS_LABELS, STATUS_TONES, type LeadStatus } from "@/lib/leads";
 import { formatPhone } from "@/lib/phone";
 import { createClient } from "@/lib/supabase/server";
 import { Badge, Card, PageHeader } from "@/components/ui";
+import { formatTime } from "@/lib/time";
 
 type Row = {
   id: string; business_name: string; contact_name: string | null; phone_e164: string | null; city: string | null;
@@ -59,7 +60,7 @@ export default async function MyLeadsPage() {
                     <td className="whitespace-nowrap px-4 py-2 text-gray-600">{formatPhone(l.phone_e164)}</td>
                     <td className="px-4 py-2"><Badge tone={STATUS_TONES[l.status]}>{STATUS_LABELS[l.status]}</Badge></td>
                     <td className="whitespace-nowrap px-4 py-2 text-gray-600">
-                      {appt ? new Date(appt.starts_at).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—"}
+                      {appt ? formatTime(appt.starts_at, "short") : "—"}
                     </td>
                   </tr>
                 );

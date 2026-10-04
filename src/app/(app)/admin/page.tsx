@@ -6,8 +6,8 @@ import { Card, PageHeader } from "@/components/ui";
 const ROADMAP = [
   { step: 1, title: "Logins, roles, users, commission plans", done: true },
   { step: 2, title: "Lead import, duplicates, EAST/WEST lists, Do Not Call", done: true },
-  { step: 3, title: "Dialer, dispositions, notes" },
-  { step: 4, title: "Calendar" },
+  { step: 3, title: "Dialer, dispositions, notes", done: true },
+  { step: 4, title: "Calendar", done: true },
   { step: 5, title: "Stats and dashboards" },
   { step: 6, title: "Stripe payments and commission" },
 ];

@@ -4,15 +4,13 @@ import { ArrowLeft, Phone } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { STATUS_LABELS, STATUS_TONES, timezoneLabel } from "@/lib/leads";
 import { formatPhone } from "@/lib/phone";
-import { Badge, Button, Card, PageHeader } from "@/components/ui";
+import { Badge, Button, PageHeader } from "@/components/ui";
 import { loadLeadContext } from "../../dialer/actions";
 import { LeadDetails, PastCalls } from "../../dialer/lead-panels";
 import { LeadNotes } from "./lead-notes";
+import { LeadAppointments } from "./lead-appointments";
 import { createClient } from "@/lib/supabase/server";
 
-const APPT_LABELS: Record<string, string> = {
-  scheduled: "Scheduled", showed: "Showed", missed: "Demo missed", canceled: "Canceled", rescheduled: "Rescheduled",
-};
 
 // A rep's view of one of their leads (admins can open any lead here too).
 export default async function LeadPage({ params }: PageProps<"/leads/[id]">) {
@@ -54,19 +52,7 @@ export default async function LeadPage({ params }: PageProps<"/leads/[id]">) {
         <div className="space-y-6">
           <LeadDetails lead={lead} />
           {(appts ?? []).length > 0 && (
-            <Card>
-              <h3 className="mb-3 font-medium text-gray-900">Appointments</h3>
-              <ul className="divide-y divide-gray-100 text-sm">
-                {(appts ?? []).map((a) => (
-                  <li key={a.id} className="flex items-center justify-between py-2">
-                    <span>{new Date(a.starts_at).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
-                    <Badge tone={a.status === "scheduled" ? "blue" : a.status === "showed" ? "green" : a.status === "missed" ? "red" : "gray"}>
-                      {APPT_LABELS[a.status] ?? a.status}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            </Card>
+            <LeadAppointments appointments={appts ?? []} canEdit={lead.owner_id === me.id || me.role === "admin"} />
           )}
         </div>
         <div className="space-y-6">

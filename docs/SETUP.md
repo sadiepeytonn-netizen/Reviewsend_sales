@@ -255,3 +255,18 @@ open **Trust Hub** and complete:
 1. **Customer Profile** (your business details); approval can take a few days.
 2. **SHAKEN/STIR Trust**: add your numbers so calls are "verified".
 3. **CNAM**: shows "ReviewSend" as the caller name on many phones.
+
+---
+
+# Step 4 setup (calendar)
+
+1. Open `supabase/migrations/0004_calendar.sql` on GitHub → **Copy raw file** → Supabase
+   **SQL Editor** → **+ New query** → paste → **Run** (once). If Supabase warns about
+   Row Level Security, choose **Run without RLS**. This file creates no tables.
+2. Vercel updates the site by itself. **Calendar** then appears in the left menu.
+
+## Getting appointments onto your phone / Google Calendar
+On the **Calendar** page, scroll to **See your demos in Google Calendar or on your phone**
+and follow the steps there. Each person has their own private link (an admin's link
+includes everyone's demos). Google refreshes subscribed calendars every few hours, so
+brand-new bookings can take a while to appear there; the CRM calendar is always instant.

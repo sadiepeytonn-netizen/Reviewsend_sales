@@ -11,6 +11,7 @@ import { markLeadDnc, setLeadList } from "./actions";
 import { NoteForm } from "./note-form";
 import { loadLeadContext } from "../../../dialer/actions";
 import { PastCalls } from "../../../dialer/lead-panels";
+import { formatTime } from "@/lib/time";
 
 type Lead = {
   id: string; business_name: string; contact_name: string | null; phone_e164: string | null; phone_raw: string | null;
@@ -22,7 +23,7 @@ type Lead = {
 };
 type Note = { id: string; body: string; created_at: string; author: { full_name: string; email: string } | null };
 
-const when = (iso: string) => new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+const when = (iso: string) => formatTime(iso);
 
 export default async function LeadPage({ params }: PageProps<"/admin/leads/[id]">) {
   const { id } = await params;

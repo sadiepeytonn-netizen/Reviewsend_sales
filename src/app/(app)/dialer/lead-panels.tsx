@@ -4,8 +4,9 @@ import { useState } from "react";
 import { ExternalLink, Star } from "lucide-react";
 import { Alert, Button, Card } from "@/components/ui";
 import type { DialerCall, DialerLead, DialerNote } from "./actions";
+import { formatTime } from "@/lib/time";
 
-const when = (iso: string) => new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+const when = (iso: string) => formatTime(iso);
 
 export const DISPOSITION_LABELS: Record<string, string> = {
   no_answer: "No answer",
