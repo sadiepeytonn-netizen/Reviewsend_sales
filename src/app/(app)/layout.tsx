@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { KeyRound, LogOut } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { Heartbeat } from "@/components/heartbeat";
+import { CallBar } from "@/components/call/call-bar";
+import { DialerProvider } from "@/components/call/dialer-provider";
 import { Nav } from "@/components/nav";
 import { signOut } from "@/app/login/actions";
 
@@ -13,6 +15,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   if (profile.must_change_password) redirect("/change-password");
 
   return (
+    <DialerProvider>
     <div className="flex min-h-screen flex-col md:flex-row">
       <Heartbeat />
       <aside className="flex shrink-0 flex-col border-b border-gray-200 bg-white px-4 py-4 md:w-60 md:border-r md:border-b-0 md:py-6">
@@ -46,7 +49,11 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 px-4 py-6 md:px-10 md:py-8">{children}</main>
+      <main className="min-w-0 flex-1 px-4 pb-6 md:px-10 md:pb-8">
+        <CallBar />
+        <div className="pt-6 md:pt-8">{children}</div>
+      </main>
     </div>
+    </DialerProvider>
   );
 }

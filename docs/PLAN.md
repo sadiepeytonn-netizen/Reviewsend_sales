@@ -56,6 +56,13 @@ Twilio subaccount. Planned address: `sales.reviewsend.io`.
 - Pause with reason (lunch, break, meeting, training, other).
 - Florida caller ID numbers (start with 2–3), registered in Twilio Trust Hub.
 
+### Calls never drop when moving around the app
+The phone and dialing session live in the app layout, not the Dialer page. Reps can open
+Calendar, Payments, My leads, etc. mid-call; a bar at the top of every page shows the call
+(timer, Mute, Hang up, Back to dialer), or a pending outcome, or the dialing session. A call
+ends only on Hang up, the other side hanging up, or closing/reloading the browser tab (the
+browser asks "Leave site?" first).
+
 ### Dialer details (built in step 3)
 - Reps can also call their own leads (appointments, follow-ups) from **My leads**;
   No Answer on an owned lead keeps it with the rep instead of returning it to the pool.
