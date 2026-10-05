@@ -218,6 +218,20 @@ The client app's A2P 10DLC texting registration lives in the MAIN Twilio account
 - SHAKEN/STIR / Voice Integrity on sales numbers only after Twilio support confirms
   it won't affect the A2P brand. CNAM / Branded Calling: on hold.
 
+## Agreed, not built yet: weekly competition
+- Shown on the dialer as a slim strip ("#2 of 4 · 135 pts · 15 behind Ryan") that opens a full board.
+- Weekly: starts Monday, ends Friday, resets every Monday (Eastern time).
+- Reps see each other's **points only** (no counts, no money).
+- Points: contact 1 · talk time 1 per 2 minutes, only on real conversations (not No answer /
+  Bad number), max 10 per call · appointment set (dialer, first time only) 10 · demo held
+  (Showed) 15 · sale (paid) 50. Point values editable by admin later.
+- Still to decide: "just booked / just sold" pop-ups for the floor; whether weekend calls count;
+  weekly commission payouts and chargeback clawbacks.
+
+## On hold
+- **Always-open coaching line** (talk to a rep between calls): rep stays connected all session,
+  prospects are added and dropped. Bigger rebuild; after Live is tested with real calls.
+
 ## Open decisions
 - **Inbound callbacks** (prospects calling the sales numbers back): undecided.
   Options: forward to a phone, voicemail in the CRM routed to the last rep who
