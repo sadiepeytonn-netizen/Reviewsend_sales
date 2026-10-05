@@ -219,7 +219,8 @@ The client app's A2P 10DLC texting registration lives in the MAIN Twilio account
   it won't affect the A2P brand. CNAM / Branded Calling: on hold.
 
 ### Weekly competition (built)
-- Shown on the dialer as a slim strip ("#2 of 4 · 135 pts · 15 behind Ryan") that opens a full board.
+- On the dialer: the full board sits next to the keypad when a rep isn't on a lead; while working
+  a lead it shrinks to a slim bar at the top ("#2 of 4 · 135 pts · 15 behind Ryan") that opens the board.
 - Weekly: starts Monday, resets every Monday at midnight Eastern. Weekend calls count toward
   that week (so the week is really Monday through Sunday).
 - Reps see each other's **points only** (no counts, no money).

@@ -11,6 +11,7 @@ import type { LeadContext } from "./actions";
 import { mmss, PAUSE_LABELS, useClock, useDialer, type Phase, type PauseReason } from "@/components/call/dialer-provider";
 import { LeadDetails, NotesPanel, PastCalls } from "./lead-panels";
 import { KeypadPanel, OwnerName, PhoneTools, SaveNewNumber } from "./keypad";
+import { CelebrationToasts, CompetitionPanel, CompetitionStrip, useCompetition } from "./competition";
 import { WrapUp } from "./wrap-up";
 
 export function Dialer({
@@ -31,6 +32,8 @@ export function Dialer({
   const { phase, list, ctx, error, callId, callState, answeredAt, muted, pauseReason, pausedAt, busy, paying, mode, manualPhone } = d;
   const [showKeypad, setShowKeypad] = useState(false);
   const now = useClock(callState === "open" || phase === "paused" || phase === "empty");
+  const competition = useCompetition();
+  const notOnLead = phase === "idle" || phase === "empty";
 
   // Opening /dialer?lead=… switches to that lead (unless a call is in progress).
   const started = useRef<string | null>(null);
@@ -98,6 +101,8 @@ export function Dialer({
 
   return (
     <div className="space-y-4">
+      {!notOnLead && <CompetitionStrip data={competition.data} />}
+      <CelebrationToasts toasts={competition.toasts} onDismiss={competition.dismiss} />
       {!callingReady && (
         <Alert tone="amber">
           Phone calls aren&apos;t connected yet{callingProblem ? ` (${callingProblem})` : ""}. You can still try the
@@ -159,9 +164,10 @@ export function Dialer({
         </Card>
       )}
 
-      {(phase === "idle" || phase === "empty") && (
-        <div className="max-w-sm">
+      {notOnLead && (
+        <div className="grid items-start gap-4 lg:grid-cols-[24rem_minmax(0,36rem)]">
           <KeypadPanel busy={busy} defaultOpen={phase === "idle"} onDial={(n) => void d.dialNumber(n)} />
+          <CompetitionPanel data={competition.data} />
         </div>
       )}
 
