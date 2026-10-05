@@ -4,6 +4,7 @@ import { twilioConfig } from "@/lib/twilio";
 import { paymentSetup } from "@/lib/payment-setup";
 import { PageHeader } from "@/components/ui";
 import { loadLeadContext } from "./actions";
+import { Competition } from "./competition";
 import { Dialer } from "./dialer";
 
 export default async function DialerPage({ searchParams }: PageProps<"/dialer">) {
@@ -22,6 +23,7 @@ export default async function DialerPage({ searchParams }: PageProps<"/dialer">)
   return (
     <>
       <PageHeader title={single ? "Call lead" : "Dialer"} />
+      <Competition />
       <Dialer callingReady={c.ready} callingProblem={c.ready ? undefined : "Twilio settings missing"} singleLead={single} payments={payments} />
     </>
   );

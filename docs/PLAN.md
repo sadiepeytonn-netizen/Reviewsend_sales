@@ -218,14 +218,16 @@ The client app's A2P 10DLC texting registration lives in the MAIN Twilio account
 - SHAKEN/STIR / Voice Integrity on sales numbers only after Twilio support confirms
   it won't affect the A2P brand. CNAM / Branded Calling: on hold.
 
-## Agreed, not built yet: weekly competition
+### Weekly competition (built)
 - Shown on the dialer as a slim strip ("#2 of 4 · 135 pts · 15 behind Ryan") that opens a full board.
 - Weekly: starts Monday, resets every Monday at midnight Eastern. Weekend calls count toward
   that week (so the week is really Monday through Sunday).
 - Reps see each other's **points only** (no counts, no money).
 - Points: contact 1 · talk time 1 per 2 minutes, only on real conversations (not No answer /
   Bad number), max 10 per call · appointment set (dialer, first time only) 10 · demo held
-  (Showed) 15 · sale (paid) 50. Point values editable by admin later.
+  (Showed) 15 · sale (paid) 50. Values live in `src/lib/competition.ts`.
+- Each rep also sees their own breakdown. Admin sees everyone's breakdown and the leader.
+- Board refreshes every 15 seconds. Pop-ups show for any dialer appointment set or paid sale.
 - Pop-ups for everyone on the dialer when a rep sets an appointment or makes a sale
   ("🎉 Ryan just set an appointment!").
 - Commission payouts stay monthly for now. Weekly pay periods and chargeback clawbacks: undecided.
