@@ -220,13 +220,15 @@ The client app's A2P 10DLC texting registration lives in the MAIN Twilio account
 
 ## Agreed, not built yet: weekly competition
 - Shown on the dialer as a slim strip ("#2 of 4 · 135 pts · 15 behind Ryan") that opens a full board.
-- Weekly: starts Monday, ends Friday, resets every Monday (Eastern time).
+- Weekly: starts Monday, resets every Monday at midnight Eastern. Weekend calls count toward
+  that week (so the week is really Monday through Sunday).
 - Reps see each other's **points only** (no counts, no money).
 - Points: contact 1 · talk time 1 per 2 minutes, only on real conversations (not No answer /
   Bad number), max 10 per call · appointment set (dialer, first time only) 10 · demo held
   (Showed) 15 · sale (paid) 50. Point values editable by admin later.
-- Still to decide: "just booked / just sold" pop-ups for the floor; whether weekend calls count;
-  weekly commission payouts and chargeback clawbacks.
+- Pop-ups for everyone on the dialer when a rep sets an appointment or makes a sale
+  ("🎉 Ryan just set an appointment!").
+- Commission payouts stay monthly for now. Weekly pay periods and chargeback clawbacks: undecided.
 
 ## On hold
 - **Always-open coaching line** (talk to a rep between calls): rep stays connected all session,
