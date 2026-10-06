@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, History, Plus, ShieldBan, Upload } from "lucide-react";
+import { ChevronLeft, ChevronRight, History, PhoneMissed, Plus, ShieldBan, Upload } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { STATUS_LABELS, STATUS_TONES, type LeadStatus } from "@/lib/leads";
 import { formatPhone } from "@/lib/phone";
 import { createClient } from "@/lib/supabase/server";
 import { Badge, Button, Card, Input, PageHeader, Select } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm-button";
-import { recycleExhausted } from "./actions";
+import { moveList, recycleExhausted } from "./actions";
 
 const PAGE_SIZE = 50;
 
@@ -19,7 +19,10 @@ type LeadRow = {
   id: string; business_name: string; contact_name: string | null; phone_e164: string | null; city: string | null; state: string | null;
   list: "EAST" | "WEST" | null; status: LeadStatus; attempt_count: number; lead_source: string | null;
   owner: { full_name: string } | null;
+  assigned_to?: string | null; // private list (after migration 0009)
 };
+
+type PrivateRow = { rep_id: string; ready_now: number; waiting: number; total: number };
 
 export default async function LeadsPage({ searchParams }: PageProps<"/admin/leads">) {
   await requireAdmin();
@@ -32,17 +35,21 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
   const page = Math.max(1, Number.parseInt(one(sp.page) || "1", 10) || 1);
 
   const supabase = await createClient();
-  const [{ data: inv }, { data: sources }, { count: exhausted }] = await Promise.all([
+  const [{ data: inv }, { data: sources }, { count: exhausted }, { data: privateData }, { data: people }] = await Promise.all([
     supabase.rpc("lead_inventory"),
     supabase.rpc("lead_source_stats"),
     supabase.from("leads").select("id", { count: "exact", head: true }).eq("status", "exhausted").is("owner_id", null),
+    supabase.rpc("private_list_stats"),
+    supabase.from("profiles").select("id, full_name, email").eq("active", true).order("full_name"),
   ]);
+  const privateLists = ((privateData ?? []) as PrivateRow[]).filter((r) => Number(r.total) > 0);
+  const nameOf = new Map((people ?? []).map((p) => [p.id as string, (p.full_name || p.email) as string]));
   const inventory = (inv ?? []) as InventoryRow[];
   const sourceStats = (sources ?? []) as SourceRow[];
 
   let query = supabase
     .from("leads")
-    .select("id, business_name, contact_name, phone_e164, city, state, list, status, attempt_count, lead_source, owner:profiles!leads_owner_id_fkey(full_name)", { count: "exact" })
+    .select("*, owner:profiles!leads_owner_id_fkey(full_name)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
@@ -83,6 +90,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
         actions={
           <div className="flex flex-wrap gap-2">
             <Link href="/admin/dnc"><Button variant="secondary"><ShieldBan className="h-4 w-4" /> Do Not Call</Button></Link>
+            <Link href="/admin/leads/never-reached"><Button variant="secondary"><PhoneMissed className="h-4 w-4" /> Never reached</Button></Link>
             <Link href="/admin/leads/imports"><Button variant="secondary"><History className="h-4 w-4" /> Import history</Button></Link>
             <Link href="/admin/leads/new"><Button variant="secondary"><Plus className="h-4 w-4" /> Add a lead</Button></Link>
             <Link href="/admin/leads/import"><Button><Upload className="h-4 w-4" /> Import leads</Button></Link>
@@ -117,6 +125,35 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
           {noList.total.toLocaleString()} lead{noList.total === 1 ? "" : "s"} couldn&apos;t be placed on EAST or WEST (unknown area code and no state).{" "}
           <Link href={linkFor({ list: "none", page: 1 })} className="font-medium underline">Review them</Link> and set the list by hand.
         </div>
+      )}
+
+      {privateLists.length > 0 && (
+        <Card className="mt-4">
+          <h2 className="font-semibold text-gray-900">Private lists</h2>
+          <p className="mt-1 text-sm text-gray-500">Leads uploaded for one person. Only they can call them (their dialer&apos;s MY LIST).</p>
+          <ul className="mt-3 divide-y divide-gray-100">
+            {privateLists.map((r) => (
+              <li key={r.rep_id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+                <span className="min-w-40 font-medium text-gray-900">{nameOf.get(r.rep_id) ?? "Former user"}</span>
+                <span className="text-gray-600">
+                  {Number(r.ready_now).toLocaleString()} ready · {Number(r.waiting).toLocaleString()} waiting · {Number(r.total).toLocaleString()} total
+                </span>
+                <form action={moveList} className="ml-auto flex items-center gap-2">
+                  <input type="hidden" name="from" value={r.rep_id} />
+                  <Select name="to" aria-label="Move to" className="w-48" defaultValue="">
+                    <option value="">Shared pool (everyone)</option>
+                    {(people ?? []).filter((p) => p.id !== r.rep_id).map((p) => (
+                      <option key={p.id} value={p.id}>{p.full_name || p.email}</option>
+                    ))}
+                  </Select>
+                  <ConfirmButton variant="secondary" message="Move this whole private list? (Leads that are already someone's client stay put.)">
+                    Move list
+                  </ConfirmButton>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
 
       {(exhausted ?? 0) > 0 && (
@@ -217,7 +254,9 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
                     <td className="hidden px-4 py-2 text-gray-600 md:table-cell">{[l.city, l.state].filter(Boolean).join(", ")}</td>
                     <td className="px-4 py-2">{l.list ? <Badge>{l.list}</Badge> : <Badge tone="amber">None</Badge>}</td>
                     <td className="px-4 py-2"><Badge tone={STATUS_TONES[l.status]}>{STATUS_LABELS[l.status]}</Badge></td>
-                    <td className="hidden px-4 py-2 text-gray-600 lg:table-cell">{l.owner?.full_name ?? ""}</td>
+                    <td className="hidden px-4 py-2 text-gray-600 lg:table-cell">
+                      {l.owner?.full_name ?? (l.assigned_to ? <span className="text-violet-700">{nameOf.get(l.assigned_to) ?? "Someone"}&apos;s list</span> : "")}
+                    </td>
                     <td className="hidden px-4 py-2 text-right text-gray-600 lg:table-cell">{l.attempt_count}</td>
                   </tr>
                 ))}

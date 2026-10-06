@@ -6,7 +6,7 @@ import { Headphones, Mic, MicOff, PhoneCall, PhoneOff } from "lucide-react";
 import type { MonitorMode } from "@/lib/twilio";
 import { MODE_LABELS, ProspectPhone } from "@/components/live/live-section";
 import { formatPhone } from "@/lib/phone";
-import { mmss, PAUSE_LABELS, useClock, useDialer } from "./dialer-provider";
+import { LIST_LABELS, mmss, PAUSE_LABELS, useClock, useDialer } from "./dialer-provider";
 
 /** Shown on every page except the dialer while a call or dialing session is going. */
 export function CallBar({ modes }: { modes: MonitorMode[] }) {
@@ -47,7 +47,7 @@ export function CallBar({ modes }: { modes: MonitorMode[] }) {
   return (
     <div className="sticky top-0 z-40 -mx-4 mb-4 flex flex-wrap items-center gap-3 bg-brand-600 px-4 py-2 text-sm text-white shadow md:-mx-10 md:px-10">
       <span>
-        Dialing session on {d.list}
+        Dialing session on {LIST_LABELS[d.list]}
         {d.phase === "paused" ? ` · Paused (${PAUSE_LABELS[d.pauseReason]})` : name ? ` · next up: ${name}` : ""}
       </span>
       <Link href="/dialer" className="ml-auto rounded-md bg-white px-2.5 py-1 font-medium text-brand-700">Back to dialer</Link>

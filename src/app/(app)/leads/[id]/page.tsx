@@ -6,7 +6,7 @@ import { STATUS_LABELS, STATUS_TONES, timezoneLabel } from "@/lib/leads";
 import { formatPhone } from "@/lib/phone";
 import { Badge, Button, PageHeader } from "@/components/ui";
 import { loadLeadContext } from "../../dialer/actions";
-import { LeadDetails, PastCalls } from "../../dialer/lead-panels";
+import { LeadDetails } from "../../dialer/lead-panels";
 import { LeadNotes } from "./lead-notes";
 import { LeadAppointments } from "./lead-appointments";
 import { createClient } from "@/lib/supabase/server";
@@ -56,8 +56,7 @@ export default async function LeadPage({ params }: PageProps<"/leads/[id]">) {
           )}
         </div>
         <div className="space-y-6">
-          <LeadNotes leadId={lead.id} initial={ctx.notes} />
-          <PastCalls calls={ctx.calls} allowDownload={me.role === "admin"} />
+          <LeadNotes leadId={lead.id} initial={ctx.notes} calls={ctx.calls} allowDownload={me.role === "admin"} />
         </div>
       </div>
     </>

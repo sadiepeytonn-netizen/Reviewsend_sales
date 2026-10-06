@@ -8,8 +8,8 @@ import { Alert, Badge, Button, Card, Select } from "@/components/ui";
 import { formatPhone } from "@/lib/phone";
 import { STATUS_LABELS, STATUS_TONES, timezoneLabel } from "@/lib/leads";
 import type { LeadContext } from "./actions";
-import { mmss, PAUSE_LABELS, useClock, useDialer, type Phase, type PauseReason } from "@/components/call/dialer-provider";
-import { LeadDetails, NotesPanel, PastCalls } from "./lead-panels";
+import { LIST_LABELS, mmss, PAUSE_LABELS, useClock, useDialer, type Phase, type PauseReason } from "@/components/call/dialer-provider";
+import { LeadDetails, NotesPanel } from "./lead-panels";
 import { KeypadPanel, OwnerName, PhoneTools, SaveNewNumber } from "./keypad";
 import { CelebrationToasts, CompetitionPanel, CompetitionStrip, useCompetition } from "./competition";
 import { WrapUp } from "./wrap-up";
@@ -121,24 +121,26 @@ export function Dialer({
           {phase === "idle" ? (
             <>
               <div className="flex rounded-lg bg-gray-100 p-1">
-                {(["EAST", "WEST"] as const).map((l) => (
+                {(["EAST", "WEST", "MINE"] as const).map((l) => (
                   <button
                     key={l}
                     onClick={() => setList(l)}
                     className={`rounded-md px-4 py-1.5 text-sm font-semibold transition ${list === l ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}
                   >
-                    {l}
+                    {LIST_LABELS[l]}
                   </button>
                 ))}
               </div>
-              <span className="text-sm text-gray-500">{list === "EAST" ? "Eastern + Central" : "Mountain, Pacific, Alaska, Hawaii"}</span>
+              <span className="text-sm text-gray-500">
+                {list === "EAST" ? "Eastern + Central" : list === "WEST" ? "Mountain, Pacific, Alaska, Hawaii" : "Leads uploaded just for you"}
+              </span>
               <Button className="ml-auto" onClick={startDialing} disabled={busy}>
                 <Play className="h-4 w-4" /> Start dialing
               </Button>
             </>
           ) : (
             <>
-              <Badge tone="blue">{list}</Badge>
+              <Badge tone="blue">{LIST_LABELS[list]}</Badge>
               <StatusPill phase={phase} callState={callState} pauseReason={pauseReason} />
               {manual && <Badge tone="gray">Keypad call</Badge>}
               <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -164,7 +166,7 @@ export function Dialer({
       {phase === "idle" && !single && (
         <Card className="py-16 text-center">
           <Phone className="mx-auto h-10 w-10 text-gray-300" />
-          <p className="mt-3 font-medium text-gray-900">Pick EAST or WEST, then click Start dialing.</p>
+          <p className="mt-3 font-medium text-gray-900">Pick EAST, WEST, or MY LIST, then click Start dialing.</p>
           <p className="mt-1 text-sm text-gray-500">Leads load one at a time. Nobody else can get the lead you&apos;re on.</p>
         </Card>
       )}
@@ -180,7 +182,7 @@ export function Dialer({
 
       {phase === "empty" && (
         <Card className="py-16 text-center">
-          <p className="font-medium text-gray-900">No leads ready on {list} right now.</p>
+          <p className="font-medium text-gray-900">No leads ready on {LIST_LABELS[list]} right now.</p>
           <p className="mt-1 text-sm text-gray-500">
             Everyone left is waiting for a retry time or is outside calling hours. Checking again every minute.
           </p>
@@ -288,8 +290,7 @@ export function Dialer({
 
           <div className="space-y-4">
             {phase === "lead" && !manual && <KeypadPanel busy={busy} onDial={(n) => void d.dialNumber(n)} />}
-            <NotesPanel notes={ctx.notes} onAdd={onAddNote} />
-            <PastCalls calls={ctx.calls} />
+            <NotesPanel notes={ctx.notes} calls={ctx.calls} onAdd={onAddNote} />
           </div>
         </div>
       )}

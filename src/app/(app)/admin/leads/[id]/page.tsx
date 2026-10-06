@@ -10,7 +10,7 @@ import { ConfirmButton } from "@/components/confirm-button";
 import { markLeadDnc, setLeadList } from "./actions";
 import { NoteForm } from "./note-form";
 import { loadLeadContext } from "../../../dialer/actions";
-import { PastCalls } from "../../../dialer/lead-panels";
+import { History } from "../../../dialer/lead-panels";
 import { formatTime } from "@/lib/time";
 
 type Lead = {
@@ -20,8 +20,8 @@ type Lead = {
   lead_source: string | null; import_notes: string | null; timezone: string | null; list: "EAST" | "WEST" | null;
   status: LeadStatus; attempt_count: number; last_called_at: string | null; next_call_at: string; created_at: string;
   owner: { full_name: string } | null;
+  assigned_to?: string | null;
 };
-type Note = { id: string; body: string; created_at: string; author: { full_name: string; email: string } | null };
 
 const when = (iso: string) => formatTime(iso);
 
@@ -31,15 +31,14 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/adm
   await requireAdmin();
   const supabase = await createClient();
 
-  const [{ data: leadData }, { data: notesData }] = await Promise.all([
-    supabase.from("leads").select("*, owner:profiles!leads_owner_id_fkey(full_name)").eq("id", id).maybeSingle(),
-    supabase.from("lead_notes").select("id, body, created_at, author:profiles(full_name, email)").eq("lead_id", id).order("created_at", { ascending: false }),
-  ]);
+  const { data: leadData } = await supabase.from("leads").select("*, owner:profiles!leads_owner_id_fkey(full_name)").eq("id", id).maybeSingle();
   if (!leadData) notFound();
   const lead = leadData as unknown as Lead;
-  const notes = (notesData ?? []) as unknown as Note[];
 
-  const calls = (await loadLeadContext(id))?.calls ?? [];
+  const ctx = await loadLeadContext(id);
+  const { data: listOwner } = lead.assigned_to
+    ? await supabase.from("profiles").select("full_name, email").eq("id", lead.assigned_to).maybeSingle()
+    : { data: null };
   const site = lead.website && !/^https?:\/\//i.test(lead.website) ? `https://${lead.website}` : lead.website;
 
   return (
@@ -84,7 +83,10 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/adm
               <Item label="Time zone">{timezoneLabel(lead.timezone)}</Item>
               <Item label="Lead source">{lead.lead_source ?? "—"}</Item>
               <Item label="Dials so far">{lead.attempt_count}{lead.last_called_at ? ` · last ${when(lead.last_called_at)}` : ""}</Item>
-              <Item label="Rep">{lead.owner?.full_name ?? "Shared pool"}</Item>
+              <Item label="Rep">
+                {lead.owner?.full_name ??
+                  (listOwner ? `${listOwner.full_name || listOwner.email}'s private list` : "Shared pool")}
+              </Item>
             </dl>
             {lead.import_notes && (
               <div className="mt-4 rounded-lg bg-gray-50 p-3 text-sm text-gray-700 ring-1 ring-gray-200">
@@ -95,25 +97,13 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/adm
           </Card>
 
           <Card>
-            <h2 className="mb-3 font-medium text-gray-900">Notes</h2>
+            <h2 className="mb-3 font-medium text-gray-900">Notes &amp; call history</h2>
             <NoteForm leadId={lead.id} />
-            {notes.length > 0 && (
-              <ul className="mt-5 space-y-4">
-                {notes.map((n) => (
-                  <li key={n.id} className="border-l-2 border-gray-200 pl-3">
-                    <p className="text-xs text-gray-500">
-                      <span className="font-medium text-gray-700">{n.author?.full_name || n.author?.email || "Someone"}</span> · {when(n.created_at)}
-                    </p>
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-gray-900">{n.body}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <History notes={ctx?.notes ?? []} calls={ctx?.calls ?? []} allowDownload />
           </Card>
         </div>
 
         <div className="space-y-6">
-          <PastCalls calls={calls} allowDownload />
           <Card>
             <h2 className="mb-3 font-medium text-gray-900">Dialing list</h2>
             <form action={setLeadList} className="flex gap-2">

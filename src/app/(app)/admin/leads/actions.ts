@@ -61,3 +61,28 @@ export async function addLead(_prev: AddLeadState, formData: FormData): Promise<
   revalidatePath("/admin/leads");
   redirect(`/admin/leads/${outcome.lead_id}?${outcome.outcome === "merged" ? "merged" : "added"}=1`);
 }
+
+/** Move everything on one person's private list to another person, or into the shared pool. */
+export async function moveList(formData: FormData) {
+  await requireAdmin();
+  const { z } = await import("zod");
+  const from = z.uuid().parse(formData.get("from"));
+  const toRaw = String(formData.get("to") ?? "");
+  const to = toRaw ? z.uuid().parse(toRaw) : null;
+  if (to === from) return;
+  const supabase = await createClient();
+  await supabase.rpc("reassign_list", { p_from: from, p_to: to });
+  revalidatePath("/admin/leads");
+}
+
+/** Take leads out of dialing for good (they stay in the CRM so re-imports don't bring them back). */
+export async function removeLeads(formData: FormData) {
+  await requireAdmin();
+  const { z } = await import("zod");
+  const ids = formData.getAll("id").map((v) => z.uuid().parse(v));
+  if (!ids.length) return;
+  const supabase = await createClient();
+  await supabase.rpc("remove_leads", { p_ids: ids });
+  revalidatePath("/admin/leads");
+  revalidatePath("/admin/leads/never-reached");
+}

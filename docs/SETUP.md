@@ -372,3 +372,15 @@ Copy `supabase/migrations/0008_live_coaching.sql` from GitHub → Supabase **SQL
 
 If calls misbehave, go to **Dashboard → Phone system → Switch to direct calls**. That puts calls
 back the old way at once (no listening) while it gets fixed.
+
+---
+
+# Update: private lead lists, Never reached, call history
+
+## Database
+Copy `supabase/migrations/0009_private_lists.sql` from GitHub → Supabase **SQL Editor** →
+**+ New query** → paste → **Run** (once). If Supabase warns about "destructive operations" or
+Row Level Security, choose **Run query** / **Run without RLS**: nothing is deleted.
+
+Until this is run, the dialer's MY LIST and the Never reached page show an error; everything else
+keeps working.

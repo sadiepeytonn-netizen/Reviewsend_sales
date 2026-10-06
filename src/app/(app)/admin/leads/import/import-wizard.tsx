@@ -24,11 +24,12 @@ function mappingStorageKey(headers: string[]) {
   return `import-mapping:${[...headers].sort().join("|")}`;
 }
 
-export function ImportWizard({ knownSources }: { knownSources: string[] }) {
+export function ImportWizard({ knownSources, people }: { knownSources: string[]; people: { id: string; name: string }[] }) {
   const [step, setStep] = useState<Step>("pick");
   const [csv, setCsv] = useState<Csv | null>(null);
   const [mapping, setMapping] = useState<Mapping>({});
   const [leadSource, setLeadSource] = useState("");
+  const [assignedTo, setAssignedTo] = useState(""); // "" = shared pool
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [outcomes, setOutcomes] = useState<RowOutcome[]>([]);
@@ -72,7 +73,7 @@ export function ImportWizard({ knownSources }: { knownSources: string[] }) {
       // Remembering the mapping is only a convenience.
     }
 
-    const start = await startImport({ fileName: csv.fileName, leadSource, totalRows: csv.rows.length });
+    const start = await startImport({ fileName: csv.fileName, leadSource, totalRows: csv.rows.length, assignedTo: assignedTo || null });
     if ("error" in start) {
       setError(start.error ?? "Couldn't start the import.");
       return;
@@ -151,6 +152,18 @@ export function ImportWizard({ knownSources }: { knownSources: string[] }) {
               <datalist id="known-sources">
                 {knownSources.map((s) => <option key={s} value={s} />)}
               </datalist>
+            </Field>
+            <Field
+              label="Who are these leads for?"
+              htmlFor="assignedTo"
+              hint={assignedTo
+                ? "Only this person can see and call these (their dialer's MY LIST). Numbers already in the CRM stay with whoever has them."
+                : "Everyone dials these from EAST / WEST."}
+            >
+              <Select id="assignedTo" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+                <option value="">Shared pool (everyone)</option>
+                {people.map((p) => <option key={p.id} value={p.id}>Only {p.name}</option>)}
+              </Select>
             </Field>
           </div>
         </Card>

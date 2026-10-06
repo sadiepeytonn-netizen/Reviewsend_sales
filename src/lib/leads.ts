@@ -1,6 +1,6 @@
 export type LeadStatus =
   | "new" | "no_answer" | "not_interested" | "appointment_set" | "demo_completed"
-  | "sold" | "do_not_call" | "bad_number" | "exhausted";
+  | "sold" | "do_not_call" | "bad_number" | "exhausted" | "removed";
 
 export const STATUS_LABELS: Record<LeadStatus, string> = {
   new: "New",
@@ -12,6 +12,7 @@ export const STATUS_LABELS: Record<LeadStatus, string> = {
   do_not_call: "Do Not Call",
   bad_number: "Bad number",
   exhausted: "Exhausted",
+  removed: "Removed",
 };
 
 export const STATUS_TONES: Record<LeadStatus, "gray" | "green" | "red" | "blue" | "amber"> = {
@@ -24,6 +25,7 @@ export const STATUS_TONES: Record<LeadStatus, "gray" | "green" | "red" | "blue" 
   do_not_call: "red",
   bad_number: "red",
   exhausted: "gray",
+  removed: "gray",
 };
 
 export const TIMEZONE_LABELS: Record<string, string> = {

@@ -8,13 +8,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export type RowOutcome = { i: number; outcome: "inserted" | "merged" | "dnc" | "invalid"; reason?: string };
 
-export async function startImport(input: { fileName: string; leadSource: string; totalRows: number }) {
+export async function startImport(input: { fileName: string; leadSource: string; totalRows: number; assignedTo?: string | null }) {
   const admin = await requireAdmin();
   const parsed = z
     .object({
       fileName: z.string().min(1).max(255),
       leadSource: z.string().trim().min(1, "Enter where these leads came from.").max(100),
       totalRows: z.number().int().min(1).max(100_000),
+      assignedTo: z.uuid().nullable().optional(),
     })
     .safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
@@ -26,6 +27,8 @@ export async function startImport(input: { fileName: string; leadSource: string;
       lead_source: parsed.data.leadSource,
       total_rows: parsed.data.totalRows,
       uploaded_by: admin.id,
+      // A person's private list (new leads only; see migration 0009).
+      ...(parsed.data.assignedTo ? { assigned_to: parsed.data.assignedTo } : {}),
     })
     .select("id")
     .single();

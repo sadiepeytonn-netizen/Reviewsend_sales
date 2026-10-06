@@ -43,6 +43,17 @@ Twilio subaccount. Planned address: `sales.reviewsend.io`.
   and before every dial. National DNC registry check: not in v1.
 - **Ownership:** leads are shared until a rep books an appointment or makes a sale.
   Then the lead belongs to that rep and leaves the dialing pool.
+- **Private lists:** only the admin can upload, and can upload a CSV for one person (any rep or
+  the admin). Those new leads go on that person's private list: only they see or call them (the
+  dialer's **MY LIST**; keypad and calendar block everyone else). Numbers already in the CRM stay
+  with whoever had them (shared pool, another rep's client, or list). Private leads follow the
+  normal retry rules and stay private when exhausted. The admin can move a whole list to someone
+  else or into the shared pool (Leads page → Private lists).
+- **Never reached:** Leads → Never reached lists leads called N+ times (default 10) with no real
+  conversation. The admin can remove them from dialing (status Removed): they keep their history,
+  and re-imports don't bring them back.
+- **Notes & call history:** notes and every call (who, when, outcome, talk time, caller ID,
+  recording) in one timeline per lead, with "Called 12 times · never reached anyone".
 
 ### Dialer
 - Dispositions: No Answer, Not Interested, Appointment Set, Demo Completed, Sold,

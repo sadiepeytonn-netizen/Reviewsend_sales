@@ -30,7 +30,9 @@ export type Monitor = MonitorTarget & { callId: string; repName: string; mode: M
 
 export type Phase = "idle" | "loading" | "empty" | "lead" | "calling" | "wrapup" | "paused";
 export type PauseReason = "lunch" | "break" | "meeting" | "training" | "other";
-export type ListName = "EAST" | "WEST";
+/** EAST / WEST = shared pool; MINE = the rep's private list. */
+export type ListName = "EAST" | "WEST" | "MINE";
+export const LIST_LABELS: Record<ListName, string> = { EAST: "EAST", WEST: "WEST", MINE: "MY LIST" };
 export type CallState = "connecting" | "ringing" | "open" | null;
 
 export const PAUSE_LABELS: Record<PauseReason, string> = {

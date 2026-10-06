@@ -54,7 +54,7 @@ export async function loadLeadContext(leadId: string): Promise<LeadContext | nul
   const [{ data: lead }, { data: notes }, { data: calls }] = await Promise.all([
     supabase.from("leads").select("*").eq("id", leadId).maybeSingle(),
     supabase.from("lead_notes").select("id, body, created_at, author:profiles(full_name, email)").eq("lead_id", leadId).order("created_at", { ascending: false }),
-    supabase.from("calls").select("id, started_at, duration_seconds, disposition, recording_sid, recording_deleted_at, from_number, rep:profiles(full_name)").eq("lead_id", leadId).order("started_at", { ascending: false }).limit(20),
+    supabase.from("calls").select("id, started_at, duration_seconds, disposition, recording_sid, recording_deleted_at, from_number, rep:profiles(full_name)").eq("lead_id", leadId).order("started_at", { ascending: false }).limit(300),
   ]);
   if (!lead) return null;
   type NoteRow = { id: string; body: string; created_at: string; author: { full_name: string; email: string } | null };
@@ -68,10 +68,12 @@ export async function loadLeadContext(leadId: string): Promise<LeadContext | nul
   };
 }
 
-export async function claimNext(list: "EAST" | "WEST"): Promise<{ context?: LeadContext | null; error?: string }> {
+/** Next lead from the shared EAST / WEST pool, or from the rep's own private list ("MINE"). */
+export async function claimNext(list: "EAST" | "WEST" | "MINE"): Promise<{ context?: LeadContext | null; error?: string }> {
   await requireUser();
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("claim_next_lead", { p_list: z.enum(["EAST", "WEST"]).parse(list) });
+  const l = z.enum(["EAST", "WEST", "MINE"]).parse(list);
+  const { data, error } = await supabase.rpc("claim_next_lead", l === "MINE" ? { p_mine: true } : { p_list: l });
   if (error) return { error: friendly(error.message) };
   if (!data) return { context: null };
   return { context: await loadLeadContext((data as { id: string }).id) };
@@ -92,14 +94,15 @@ export async function heartbeat() {
 const presenceSchema = z.object({
   status: z.enum(["idle", "ready", "on_call", "wrap_up", "paused", "offline"]),
   reason: z.enum(["lunch", "break", "meeting", "training", "other"]).nullable().optional(),
-  list: z.enum(["EAST", "WEST"]).nullable().optional(),
+  list: z.enum(["EAST", "WEST", "MINE"]).nullable().optional(),
 });
 
 export async function setPresence(input: z.infer<typeof presenceSchema>): Promise<{ error?: string }> {
   await requireUser();
   const p = presenceSchema.parse(input);
   const supabase = await createClient();
-  const { error } = await supabase.rpc("set_presence", { p_status: p.status, p_reason: p.reason ?? null, p_list: p.list ?? null });
+  const list = p.list === "MINE" ? null : (p.list ?? null); // a private list isn't EAST/WEST
+  const { error } = await supabase.rpc("set_presence", { p_status: p.status, p_reason: p.reason ?? null, p_list: list });
   return error ? { error: friendly(error.message) } : {};
 }
 
@@ -181,7 +184,7 @@ export async function lookupNumber(raw: string): Promise<LookupResult> {
   if (error) return { status: "blocked", error: friendly(error.message) };
   const r = data as { status: string; lead_id?: string };
   if (r.status === "dnc") return { status: "blocked", error: "That number is on the Do Not Call list." };
-  if (r.status === "other_rep") return { status: "blocked", error: "That number belongs to another rep's client." };
+  if (r.status === "other_rep") return { status: "blocked", error: "That number belongs to another rep (their client or private list)." };
   if (r.status === "busy") return { status: "blocked", error: "Another rep has that lead on their dialer right now." };
   if (r.status === "lead" && r.lead_id) {
     const context = await loadLeadContext(r.lead_id);
