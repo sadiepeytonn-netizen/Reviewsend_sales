@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, History, ShieldBan, Upload } from "lucide-react";
+import { ChevronLeft, ChevronRight, History, Plus, ShieldBan, Upload } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { STATUS_LABELS, STATUS_TONES, type LeadStatus } from "@/lib/leads";
 import { formatPhone } from "@/lib/phone";
@@ -84,6 +84,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
           <div className="flex flex-wrap gap-2">
             <Link href="/admin/dnc"><Button variant="secondary"><ShieldBan className="h-4 w-4" /> Do Not Call</Button></Link>
             <Link href="/admin/leads/imports"><Button variant="secondary"><History className="h-4 w-4" /> Import history</Button></Link>
+            <Link href="/admin/leads/new"><Button variant="secondary"><Plus className="h-4 w-4" /> Add a lead</Button></Link>
             <Link href="/admin/leads/import"><Button><Upload className="h-4 w-4" /> Import leads</Button></Link>
           </div>
         }

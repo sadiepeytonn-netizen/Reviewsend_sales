@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { STATUS_LABELS, STATUS_TONES, timezoneLabel, type LeadStatus } from "@/lib/leads";
 import { formatPhone } from "@/lib/phone";
 import { createClient } from "@/lib/supabase/server";
-import { Badge, Button, Card, PageHeader, Select } from "@/components/ui";
+import { Alert, Badge, Button, Card, PageHeader, Select } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm-button";
 import { markLeadDnc, setLeadList } from "./actions";
 import { NoteForm } from "./note-form";
@@ -25,8 +25,9 @@ type Note = { id: string; body: string; created_at: string; author: { full_name:
 
 const when = (iso: string) => formatTime(iso);
 
-export default async function LeadPage({ params }: PageProps<"/admin/leads/[id]">) {
+export default async function LeadPage({ params, searchParams }: PageProps<"/admin/leads/[id]">) {
   const { id } = await params;
+  const sp = await searchParams;
   await requireAdmin();
   const supabase = await createClient();
 
@@ -46,6 +47,10 @@ export default async function LeadPage({ params }: PageProps<"/admin/leads/[id]"
       <Link href="/admin/leads" className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900">
         <ArrowLeft className="h-4 w-4" /> Leads
       </Link>
+      {"added" in sp && <div className="mb-4"><Alert tone="green">Lead added. It&apos;s in the dialing pool now.</Alert></div>}
+      {"merged" in sp && (
+        <div className="mb-4"><Alert tone="amber">That phone number was already in the CRM, so this is the existing lead. Any blank fields were filled in.</Alert></div>
+      )}
       <PageHeader
         title={lead.business_name}
         description={[lead.contact_name ? `Owner: ${lead.contact_name}` : "Owner unknown", [lead.city, lead.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}

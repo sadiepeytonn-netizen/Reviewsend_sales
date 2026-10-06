@@ -5,6 +5,7 @@ import { ExternalLink, Star } from "lucide-react";
 import { Alert, Button, Card } from "@/components/ui";
 import type { DialerCall, DialerLead, DialerNote } from "./actions";
 import { formatTime } from "@/lib/time";
+import { formatPhone } from "@/lib/phone";
 
 const when = (iso: string) => formatTime(iso);
 
@@ -118,7 +119,11 @@ export function PastCalls({ calls, allowDownload = false }: { calls: DialerCall[
               {when(c.started_at)} · {c.disposition ? DISPOSITION_LABELS[c.disposition] ?? c.disposition : "No outcome"}
               {c.duration_seconds ? ` · ${Math.floor(c.duration_seconds / 60)}:${String(c.duration_seconds % 60).padStart(2, "0")}` : ""}
             </p>
-            {c.rep && <p className="text-xs text-gray-500">{c.rep}</p>}
+            {(c.rep || c.from_number) && (
+              <p className="text-xs text-gray-500">
+                {[c.rep, c.from_number && `from ${formatPhone(c.from_number)}`].filter(Boolean).join(" · ")}
+              </p>
+            )}
             {c.recording_sid && c.recording_deleted_at && (
               <p className="mt-1 text-xs text-gray-400">Recording deleted (older than 1 year)</p>
             )}

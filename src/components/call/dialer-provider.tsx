@@ -45,6 +45,8 @@ export type Mode = "queue" | "single" | "manual";
 
 type DialerApi = {
   phase: Phase;
+  /** The company number the current call went out on (caller ID the prospect sees). */
+  fromNumber: string | null;
   /** queue = EAST/WEST dialing, single = one of the rep's own leads, manual = typed on the keypad */
   mode: Mode;
   /** Keypad call: the number dialed (ctx is null when it isn't in the CRM yet). */
@@ -121,6 +123,7 @@ export function DialerProvider({ children }: { children: ReactNode }) {
   const [paying, setPaying] = useState(false);
   // Conference calls connect the rep right away; "answered" comes from the server.
   const [conference, setConference] = useState(false);
+  const [fromNumber, setFromNumber] = useState<string | null>(null);
   const [monitor, setMonitor] = useState<Monitor | null>(null);
   const monitorCallRef = useRef<Call | null>(null);
 
@@ -275,6 +278,7 @@ export function DialerProvider({ children }: { children: ReactNode }) {
       return;
     }
     setCallId(started.callId);
+    setFromNumber(null);
     const conf = Boolean(started.conference);
     setConference(conf);
     endedRef.current = false;
@@ -327,18 +331,21 @@ export function DialerProvider({ children }: { children: ReactNode }) {
     if (callId) void sendCallDigits(callId, d).then((r) => r.error && setError(r.error));
   }, [conference, callId]);
 
-  // Conference call: check every 1.5s whether the prospect picked up.
+  // Every 1.5s until known: which company number the call went out on (shown to the rep),
+  // and for conference calls whether the prospect picked up.
+  const needProgress = phase === "calling" && Boolean(callId) && (!fromNumber || (conference && callState !== "open"));
   useEffect(() => {
-    if (!conference || phase !== "calling" || !callId || callState === "open") return;
+    if (!needProgress || !callId) return;
     const t = setInterval(async () => {
       const p = await getCallProgress(callId);
-      if (p.answered && !endedRef.current) {
+      if (p.fromNumber) setFromNumber(p.fromNumber);
+      if (conference && p.answered && !endedRef.current) {
         setCallState("open");
         setAnsweredAt(Date.now());
       }
     }, 1500);
     return () => clearInterval(t);
-  }, [conference, phase, callId, callState]);
+  }, [needProgress, conference, callId]);
 
   // ---- Listening in on another rep's call ------------------------------------
   const listenIn = useCallback(async (targetCallId: string, repName: string, mode: MonitorMode, target: MonitorTarget) => {
@@ -515,7 +522,7 @@ export function DialerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const api: DialerApi = {
-    phase, mode, manualPhone, list, ctx, error, callId, callState, answeredAt, muted, pauseReason, pausedAt, busy, paying,
+    phase, fromNumber, mode, manualPhone, list, ctx, error, callId, callState, answeredAt, muted, pauseReason, pausedAt, busy, paying,
     setList, setPauseReason, setError, setPaying, setPhase,
     startDialing, stopDialing, loadNext, pause, resume, startSingle, call, hangUp, toggleMute, sendDigits,
     submitDisposition, addNote, patchLead, dialNumber, cancelManual, saveManualLead, closeUnknown,

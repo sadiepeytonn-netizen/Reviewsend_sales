@@ -75,6 +75,11 @@ export function Dialer({
       <span className="ml-2 font-mono text-lg text-gray-700">
         {callState === "open" && answeredAt ? mmss(now - answeredAt) : callState === "ringing" ? "Ringing…" : "Connecting…"}
       </span>
+      {d.fromNumber && (
+        <span className="text-sm text-gray-500" title="The number the person sees on their caller ID">
+          Calling from <b className="font-mono text-gray-700">{formatPhone(d.fromNumber)}</b>
+        </span>
+      )}
     </>
   );
   // Florida needs everyone's consent to record, so the rep says it out loud.

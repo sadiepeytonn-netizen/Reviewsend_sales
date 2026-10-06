@@ -37,6 +37,8 @@ Twilio subaccount. Planned address: `sales.reviewsend.io`.
 - Only valid US phone numbers are imported; rows without a business name or phone
   are skipped and listed in a downloadable report.
 - An import can be undone (removes the leads it added that haven't been called).
+- Admin can **Add a lead** by hand (Leads page). Same checks as an import (valid phone, Do Not Call,
+  duplicates fill in blanks, time zone/list). Filed under a daily "Added by hand" import.
 - Do Not Call list is permanent (the database refuses deletes). Checked on import
   and before every dial. National DNC registry check: not in v1.
 - **Ownership:** leads are shared until a rep books an appointment or makes a sale.
@@ -73,7 +75,8 @@ browser asks "Leave site?" first).
 - Keypad (for phone menus), mute, "pause after this call", and a default appointment
   of the next weekday at 10am.
 - Caller ID: a number with the lead's area code if one exists, otherwise a random one
-  of the company's numbers.
+  of the company's numbers. The dialer shows "Calling from …" during each call, and Past calls
+  shows which number each call used.
 - Admin can recycle exhausted leads back into the pool from the Leads page.
 
 ### Keypad ("Dial a number")
