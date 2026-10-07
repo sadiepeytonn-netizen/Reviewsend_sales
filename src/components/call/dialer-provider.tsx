@@ -23,6 +23,7 @@ import {
 } from "@/app/(app)/dialer/actions";
 import type { Disposition } from "@/app/(app)/dialer/wrap-up";
 import { switchMonitor } from "@/components/live/actions";
+import { startRingback } from "./ringback";
 import type { MonitorMode } from "@/lib/twilio";
 
 /** Listening in on another rep's call. */
@@ -300,6 +301,14 @@ export function DialerProvider({ children }: { children: ReactNode }) {
         setCallState("open");
         setAnsweredAt(Date.now());
       });
+      // Conference call: the server tells us the moment the prospect picks up.
+      c.on("messageReceived", (m: { content?: unknown }) => {
+        const content = typeof m.content === "string" ? m.content : JSON.stringify(m.content ?? {});
+        if (conf && content.includes("answered") && !endedRef.current) {
+          setCallState("open");
+          setAnsweredAt((t) => t ?? Date.now());
+        }
+      });
       c.on("disconnect", endCall);
       c.on("cancel", endCall);
       c.on("reject", endCall);
@@ -345,11 +354,18 @@ export function DialerProvider({ children }: { children: ReactNode }) {
       if (p.fromNumber) setFromNumber(p.fromNumber);
       if (conference && p.answered && !endedRef.current) {
         setCallState("open");
-        setAnsweredAt(Date.now());
+        setAnsweredAt((t) => t ?? Date.now());
       }
-    }, 1500);
+    }, 1000);
     return () => clearInterval(t);
   }, [needProgress, conference, callId]);
+
+  // Ringing tone while a conference call rings (stops when they pick up or the call ends).
+  const ringing = conference && phase === "calling" && callState === "ringing";
+  useEffect(() => {
+    if (!ringing) return;
+    return startRingback();
+  }, [ringing]);
 
   // ---- Listening in on another rep's call ------------------------------------
   const listenIn = useCallback(async (targetCallId: string, repName: string, mode: MonitorMode, target: MonitorTarget) => {

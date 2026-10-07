@@ -16,6 +16,13 @@ export async function POST(req: Request) {
   if ((status === "in-progress" || status === "answered") && !call.answered_at) {
     await supabase.from("calls").update({ answered_at: new Date().toISOString(), twilio_status: "in-progress" }).eq("id", call.id);
     await supabase.from("events").insert({ type: "call_answered", rep_id: call.rep_id, lead_id: call.lead_id, call_id: call.id });
+    // Conference call: tell the rep's browser right away so the ringing tone stops and the timer starts.
+    if (call.conference && call.twilio_call_sid) {
+      await twilioClient()
+        .calls(call.twilio_call_sid)
+        .userDefinedMessages.create({ content: JSON.stringify({ type: "answered" }) })
+        .catch(() => {}); // the browser also checks every second
+    }
   } else if (["completed", "busy", "no-answer", "failed", "canceled"].includes(status)) {
     const answered = Boolean(call.answered_at) && status === "completed";
     const duration = answered ? Number.parseInt(params.CallDuration ?? "0", 10) || 0 : 0;

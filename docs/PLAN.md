@@ -131,6 +131,9 @@ browser asks "Leave site?" first).
 - Reps are never shown that someone is listening (no beep, nothing on screen). Each listen-in is
   logged under the listener, for the admin only.
 - To listen, you must not be dialing (pause or stop first).
+- Ringing: conference calls don't get Twilio's own ringing sound, so the CRM plays a ringing tone in
+  the rep's headset until the prospect answers (Twilio tells the browser instantly; checked every
+  second as a backup).
 - How it works: each call is a private Twilio conference room (rep + prospect). Only the prospect's
   side is recorded, so whispers are never in recordings. Keypad tones for phone menus are sent
   through the server (about a half-second delay per key).
