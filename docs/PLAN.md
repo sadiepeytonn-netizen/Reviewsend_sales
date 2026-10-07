@@ -114,7 +114,7 @@ browser asks "Leave site?" first).
 - Imports map "Owner", "Owner name", "Contact name", "First/Last name" to the owner's name.
   HubSpot's "Company owner" (a HubSpot user) is not mapped.
 
-### Live: listen / whisper / barge
+### Live: listen / whisper / barge (tested with real calls ✅)
 - A **Live** section in the menu (under the pages) lists every rep with their status. A rep on a
   call also shows who they're talking to: owner's name, business name, and phone number (admin can
   click the number to open the lead). Click a rep
@@ -255,6 +255,8 @@ The client app's A2P 10DLC texting registration lives in the MAIN Twilio account
   prospects are added and dropped. Bigger rebuild; after Live is tested with real calls.
 
 ## Open decisions
+- **More caller ID numbers**: 4 numbers (all 954) for 5 people. Adding 4–6 more Florida numbers in
+  other area codes is recommended to avoid "Spam Likely" labels; the owner is holding off for now.
 - **Inbound callbacks** (prospects calling the sales numbers back): undecided.
   Options: forward to a phone, voicemail in the CRM routed to the last rep who
   called, forward-then-voicemail (recommended), or ring the rep's browser.
