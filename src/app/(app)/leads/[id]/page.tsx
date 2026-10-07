@@ -9,6 +9,7 @@ import { loadLeadContext } from "../../dialer/actions";
 import { LeadDetails } from "../../dialer/lead-panels";
 import { LeadNotes } from "./lead-notes";
 import { LeadAppointments } from "./lead-appointments";
+import { EditLeadButton } from "../../dialer/edit-lead";
 import { createClient } from "@/lib/supabase/server";
 
 
@@ -40,6 +41,7 @@ export default async function LeadPage({ params }: PageProps<"/leads/[id]">) {
         actions={
           <div className="flex items-center gap-3">
             <Badge tone={STATUS_TONES[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>
+            <EditLeadButton lead={lead} />
             {canCall && lead.status !== "do_not_call" && (
               <Link href={`/dialer?lead=${lead.id}`}>
                 <Button className="bg-green-600 hover:bg-green-700"><Phone className="h-4 w-4" /> Call</Button>

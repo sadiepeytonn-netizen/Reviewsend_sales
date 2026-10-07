@@ -10,6 +10,7 @@ import {
   dispose,
   getCallProgress,
   getVoiceToken,
+  loadLeadContext,
   lookupNumber,
   releaseLead,
   saveCallAsLead,
@@ -82,6 +83,7 @@ type DialerApi = {
   submitDisposition: (d: Disposition) => Promise<void>;
   addNote: (body: string) => Promise<{ error?: string }>;
   patchLead: (patch: Partial<DialerLead>) => void;
+  reloadLead: () => Promise<void>;
   dialNumber: (raw: string) => Promise<void>;
   cancelManual: () => Promise<void>;
   saveManualLead: (input: { businessName: string; ownerName: string; email?: string }) => Promise<{ error?: string }>;
@@ -523,11 +525,19 @@ export function DialerProvider({ children }: { children: ReactNode }) {
     setCtx((c) => (c ? { ...c, lead: { ...c.lead, ...patch } } : c));
   }, []);
 
+  /** Re-read the lead, notes, and calls (after an edit). */
+  const reloadLead = useCallback(async () => {
+    const id = ctx?.lead.id;
+    if (!id) return;
+    const fresh = await loadLeadContext(id);
+    if (fresh) setCtx((c) => (c?.lead.id === id ? fresh : c));
+  }, [ctx?.lead.id]);
+
   const api: DialerApi = {
     phase, fromNumber, mode, manualPhone, list, ctx, error, callId, callState, answeredAt, muted, pauseReason, pausedAt, busy, paying,
     setList, setPauseReason, setError, setPaying, setPhase,
     startDialing, stopDialing, loadNext, pause, resume, startSingle, call, hangUp, toggleMute, sendDigits,
-    submitDisposition, addNote, patchLead, dialNumber, cancelManual, saveManualLead, closeUnknown,
+    submitDisposition, addNote, patchLead, reloadLead, dialNumber, cancelManual, saveManualLead, closeUnknown,
     monitor, listenIn, switchMonitorMode, leaveMonitor,
   };
   return <DialerContext.Provider value={api}>{children}</DialerContext.Provider>;

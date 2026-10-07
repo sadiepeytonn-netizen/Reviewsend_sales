@@ -52,6 +52,11 @@ Twilio subaccount. Planned address: `sales.reviewsend.io`.
 - **Never reached:** Leads → Never reached lists leads called N+ times (default 10) with no real
   conversation. The admin can remove them from dialing (status Removed): they keep their history,
   and re-imports don't bring them back.
+- **Editing leads:** everyone can edit any lead they can see (reps: the lead on their dialer,
+  their clients, their private list; admin: all) with the **Edit lead** button on the dialer and
+  lead pages. A new phone number must be valid, not on Do Not Call, and not another lead's; the time
+  zone and EAST/WEST list follow the new number. Every edit is written into the lead's notes
+  ("✏️ Edited — Business: A → B") and the permanent event log.
 - **Notes & call history:** notes and every call (who, when, outcome, talk time, caller ID,
   recording) in one timeline per lead, with "Called 12 times · never reached anyone".
 

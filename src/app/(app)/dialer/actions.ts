@@ -289,3 +289,105 @@ export async function sendCallDigits(callId: string, digits: string): Promise<{ 
     return { error: "Couldn't send the keypad tones." };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Editing a lead (anyone who can see it)
+// ---------------------------------------------------------------------------
+
+const EDITABLE = {
+  business_name: "Business",
+  contact_name: "Owner",
+  phone_e164: "Phone",
+  email: "Email",
+  website: "Website",
+  address: "Address",
+  city: "City",
+  state: "State",
+  category: "Category",
+  google_profile_url: "Google link",
+} as const;
+
+export type LeadEdit = { [K in Exclude<keyof typeof EDITABLE, "phone_e164">]: string } & { phone: string };
+
+/**
+ * Fix a lead's details (wrong business on a number, new owner name, etc.). Reps can edit
+ * any lead they can see; admins any lead. Every change is written to the lead's notes.
+ */
+export async function editLead(leadId: string, input: LeadEdit): Promise<{ lead?: DialerLead; error?: string }> {
+  const me = await requireUser();
+  const id = z.uuid().parse(leadId);
+  const supabase = await createClient();
+  // Row-level security decides who may edit: if you can see it, you can fix it.
+  const { data: current } = await supabase.from("leads").select("*").eq("id", id).maybeSingle();
+  if (!current) return { error: "You can't edit this lead." };
+  const lead = current as DialerLead & Record<string, unknown>;
+
+  const { normalizePhone, normalizeState, locate, listForTimezone, formatPhone } = await import("@/lib/phone");
+  const clean = (v: string | undefined, max = 300) => {
+    const t = (v ?? "").trim().slice(0, max);
+    return t || null;
+  };
+  const business = clean(input.business_name, 200);
+  if (!business) return { error: "Enter the business name." };
+  const phone = normalizePhone(input.phone);
+  if (!phone) return { error: "That isn't a valid US phone number." };
+  const email = clean(input.email, 200)?.toLowerCase() ?? null;
+  if (email && !z.email().safeParse(email).success) return { error: "That email doesn't look right." };
+  const stateRaw = clean(input.state, 40);
+  const state = stateRaw ? normalizeState(stateRaw) ?? stateRaw.toUpperCase().slice(0, 2) : null;
+
+  const next: Record<string, string | null> = {
+    business_name: business,
+    contact_name: clean(input.contact_name, 200),
+    phone_e164: phone,
+    email,
+    website: clean(input.website),
+    address: clean(input.address),
+    city: clean(input.city, 100),
+    state,
+    category: clean(input.category, 100),
+    google_profile_url: clean(input.google_profile_url, 500),
+  };
+
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const db = createAdminClient();
+  const update: Record<string, unknown> = { ...next };
+  if (phone !== lead.phone_e164) {
+    const [{ data: dnc }, { data: dupe }] = await Promise.all([
+      db.from("dnc_numbers").select("phone_e164").eq("phone_e164", phone).maybeSingle(),
+      db.from("leads").select("id").eq("phone_e164", phone).neq("id", id).maybeSingle(),
+    ]);
+    if (dnc) return { error: "That number is on the Do Not Call list." };
+    if (dupe) return { error: "That number already belongs to another lead in the CRM." };
+    // New number, new place: work out the time zone and EAST/WEST list again.
+    const where = locate(phone, state);
+    update.phone_raw = input.phone.trim();
+    update.timezone = where.timezone ?? lead.timezone;
+    update.list = listForTimezone(where.timezone) ?? lead.list;
+    if (!state && where.state) update.state = where.state;
+  }
+
+  const changes: Record<string, [unknown, unknown]> = {};
+  for (const k of Object.keys(EDITABLE) as (keyof typeof EDITABLE)[]) {
+    const before = (lead[k] as string | null) ?? null;
+    const after = (update[k] as string | null) ?? null;
+    if ((before ?? "") !== (after ?? "")) changes[k] = [before, after];
+  }
+  if (Object.keys(changes).length === 0) return { lead: lead as DialerLead };
+
+  const { data: saved, error } = await db.from("leads").update(update).eq("id", id).select("*").single();
+  if (error) {
+    if (error.message.includes("name_city")) return { error: "Another lead already has this business name and city." };
+    if (error.message.includes("phone")) return { error: "That number already belongs to another lead in the CRM." };
+    return { error: `Couldn't save: ${error.message}` };
+  }
+
+  // A visible trail on the lead, plus the permanent event log.
+  const show = (k: string, v: unknown) => (v == null || v === "" ? "(blank)" : k === "phone_e164" ? formatPhone(String(v)) : String(v));
+  const lines = Object.entries(changes).map(([k, [a, b]]) => `${EDITABLE[k as keyof typeof EDITABLE]}: ${show(k, a)} → ${show(k, b)}`);
+  await Promise.all([
+    db.from("lead_notes").insert({ lead_id: id, author_id: me.id, body: `✏️ Edited\n${lines.join("\n")}` }),
+    db.from("events").insert({ type: "lead_edited", rep_id: me.id, lead_id: id, data: { changes } }),
+  ]);
+  return { lead: saved as DialerLead };
+}

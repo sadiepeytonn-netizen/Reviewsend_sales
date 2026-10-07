@@ -11,6 +11,7 @@ import type { LeadContext } from "./actions";
 import { LIST_LABELS, mmss, PAUSE_LABELS, useClock, useDialer, type Phase, type PauseReason } from "@/components/call/dialer-provider";
 import { LeadDetails, NotesPanel } from "./lead-panels";
 import { KeypadPanel, OwnerName, PhoneTools, SaveNewNumber } from "./keypad";
+import { EditLeadButton } from "./edit-lead";
 import { CelebrationToasts, CompetitionPanel, CompetitionStrip, useCompetition } from "./competition";
 import { WrapUp } from "./wrap-up";
 
@@ -253,7 +254,10 @@ export function Dialer({
                 </div>
                 <Badge tone={STATUS_TONES[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>
               </div>
-              <div className="mt-4"><PhoneTools phone={lead.phone_e164} /></div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <PhoneTools phone={lead.phone_e164} />
+                <EditLeadButton lead={lead} label="Edit lead" onSaved={() => void d.reloadLead()} />
+              </div>
 
               {/* Call controls */}
               <div className="mt-6 flex flex-wrap items-center gap-3">

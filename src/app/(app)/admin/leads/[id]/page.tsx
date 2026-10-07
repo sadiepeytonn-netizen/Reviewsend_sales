@@ -11,6 +11,7 @@ import { markLeadDnc, setLeadList } from "./actions";
 import { NoteForm } from "./note-form";
 import { loadLeadContext } from "../../../dialer/actions";
 import { History } from "../../../dialer/lead-panels";
+import { EditLeadButton } from "../../../dialer/edit-lead";
 import { formatTime } from "@/lib/time";
 
 type Lead = {
@@ -53,7 +54,12 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/adm
       <PageHeader
         title={lead.business_name}
         description={[lead.contact_name ? `Owner: ${lead.contact_name}` : "Owner unknown", [lead.city, lead.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}
-        actions={<Badge tone={STATUS_TONES[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>}
+        actions={
+          <div className="flex items-center gap-3">
+            <Badge tone={STATUS_TONES[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>
+            <EditLeadButton lead={lead} />
+          </div>
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_24rem]">
