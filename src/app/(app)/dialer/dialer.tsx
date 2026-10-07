@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Coffee, CreditCard, Grid3x3, Mic, MicOff, Pause, Phone, PhoneOff, Play, Square, X } from "lucide-react";
+import { Coffee, CreditCard, Grid3x3, Mic, MicOff, Pause, Phone, PhoneCall, PhoneOff, Play, Square, X } from "lucide-react";
 import type { PaymentSetup } from "@/lib/payment-setup";
 import { PaymentFlow } from "../payments/payment-flow";
 import { Alert, Badge, Button, Card, Select } from "@/components/ui";
@@ -87,6 +87,15 @@ export function Dialer({
     <div className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-300">
       <b>Say it first:</b> &quot;Heads up, I record my calls for training.&quot;
     </div>
+  );
+  // Call dropped or failed? Redial the same person without leaving the outcome screen.
+  const callBack = phase === "wrapup" && callingReady && (
+    <>
+      <Button onClick={call} disabled={busy} variant="secondary" className="text-green-800 ring-green-300">
+        <PhoneCall className="h-4 w-4" /> Call back
+      </Button>
+      <span className="text-sm text-gray-500">Call dropped? Call them right back, then pick the outcome.</span>
+    </>
   );
   const dtmfPad = (
     <div className="mt-4 grid w-48 grid-cols-3 gap-2">
@@ -214,6 +223,7 @@ export function Dialer({
                 </>
               )}
               {onCall && callControls}
+              {callBack}
             </div>
             {onCall && recordingReminder}
               {onCall && showKeypad && dtmfPad}
@@ -243,7 +253,7 @@ export function Dialer({
                 </div>
                 <Badge tone={STATUS_TONES[lead.status]}>{STATUS_LABELS[lead.status]}</Badge>
               </div>
-              {phase === "lead" && <div className="mt-4"><PhoneTools phone={lead.phone_e164} /></div>}
+              <div className="mt-4"><PhoneTools phone={lead.phone_e164} /></div>
 
               {/* Call controls */}
               <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -262,6 +272,7 @@ export function Dialer({
                   </>
                 )}
                 {onCall && callControls}
+                {callBack}
               </div>
               {(phase === "lead" || onCall || phase === "wrapup") && (
                 <div className="mt-4">

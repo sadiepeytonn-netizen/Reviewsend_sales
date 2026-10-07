@@ -85,6 +85,9 @@ browser asks "Leave site?" first).
   dial stats count only real calls.
 - Keypad (for phone menus), mute, "pause after this call", and a default appointment
   of the next weekday at 10am.
+- **Copy number / Google it** stay on the lead card before, during, and after the call.
+- **Call back** on the outcome screen redials the same person (dropped or failed call); the
+  dropped call stays in the history with no outcome.
 - Caller ID: a number with the lead's area code if one exists, otherwise a random one
   of the company's numbers. The dialer shows "Calling from …" during each call, and Past calls
   shows which number each call used.
