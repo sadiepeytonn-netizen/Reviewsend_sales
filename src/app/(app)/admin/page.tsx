@@ -11,7 +11,7 @@ import { LiveFloor } from "@/components/stats/live-floor";
 import { RangePicker } from "@/components/stats/range-picker";
 import { TrendChart } from "@/components/stats/trend-chart";
 import { getFloor } from "./actions";
-import { setConferenceCalls } from "@/components/live/actions";
+import { setCallingHours, setConferenceCalls } from "@/components/live/actions";
 
 type InventoryRow = { list: "EAST" | "WEST" | null; ready_now: number; waiting: number; total: number };
 
@@ -19,8 +19,11 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
   await requireAdmin();
   const sp = await searchParams;
   const supabase = await createClient();
-  const { data: phone } = await supabase.from("settings").select("conference_calls").eq("id", 1).maybeSingle();
+  const { data: phone } = await supabase.from("settings").select("*").eq("id", 1).maybeSingle();
   const conferenceCalls = (phone as { conference_calls?: boolean } | null)?.conference_calls;
+  const hours = phone as { calling_start_hour?: number; calling_end_hour?: number } | null;
+  const anyTime = hours?.calling_start_hour === 0 && hours?.calling_end_hour === 24;
+  const ampm = (h: number) => `${h % 12 || 12}${h < 12 || h === 24 ? "am" : "pm"}`;
   const [{ range, reps, team, daily, query, setupError }, floor, { data: inv }] = await Promise.all([
     loadStats(sp),
     getFloor(),
@@ -111,6 +114,20 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
             <form action={setConferenceCalls}>
               <input type="hidden" name="on" value={conferenceCalls ? "false" : "true"} />
               <Button variant="secondary">{conferenceCalls ? "Switch to direct calls" : "Switch to conference calls"}</Button>
+            </form>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-gray-100 pt-4">
+            <div>
+              <h3 className="text-sm font-medium text-gray-900">Calling hours</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {anyTime
+                  ? "Off: reps can call any lead at any time of day."
+                  : `On: the dialer only calls leads between ${ampm(hours?.calling_start_hour ?? 8)} and ${ampm(hours?.calling_end_hour ?? 20)} their time (keypad calls have no limit).`}
+              </p>
+            </div>
+            <form action={setCallingHours}>
+              <input type="hidden" name="on" value={anyTime ? "true" : "false"} />
+              <Button variant="secondary">{anyTime ? "Turn on 8am–8pm" : "Turn off calling hours"}</Button>
             </form>
           </div>
         </Card>

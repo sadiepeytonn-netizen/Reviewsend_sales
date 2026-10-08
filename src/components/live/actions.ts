@@ -107,3 +107,14 @@ export async function setConferenceCalls(formData: FormData) {
   await createAdminClient().from("settings").update({ conference_calls: on }).eq("id", 1);
   revalidatePath("/admin");
 }
+
+/** Admin: calling-hours limit on (8am–8pm in the lead's time zone) or off (any time). */
+export async function setCallingHours(formData: FormData) {
+  await requireAdmin();
+  const on = formData.get("on") === "true";
+  await createAdminClient()
+    .from("settings")
+    .update(on ? { calling_start_hour: 8, calling_end_hour: 20 } : { calling_start_hour: 0, calling_end_hour: 24 })
+    .eq("id", 1);
+  revalidatePath("/admin");
+}

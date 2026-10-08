@@ -69,7 +69,8 @@ Twilio subaccount. Planned address: `sales.reviewsend.io`.
 - No Answer retry rules: attempts 1–2 retry after 4 hours; attempts 3–6 retry
   the next business day, alternating morning/afternoon; after 6 → Exhausted
   (admin can recycle). All adjustable in settings.
-- Calling hours: only dial 8am–8pm in the lead's local time.
+- Calling hours: **off** (owner's decision): reps can call any lead at any time. The admin
+  Dashboard (Phone system → Calling hours) can turn 8am–8pm in the lead's local time back on.
 - Recording notice: **no automated message.** Reps say it themselves at the start of every call
   ("Heads up, I record my calls for training."). The dialer shows a yellow reminder during every
   call. Calls are still recorded. (Florida needs every party's consent. Have a lawyer check the wording.)

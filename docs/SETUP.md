@@ -384,3 +384,11 @@ Row Level Security, choose **Run query** / **Run without RLS**: nothing is delet
 
 Until this is run, the dialer's MY LIST and the Never reached page show an error; everything else
 keeps working.
+
+---
+
+# Update: calling hours off
+
+Copy `supabase/migrations/0010_calling_hours_off.sql` from GitHub → Supabase **SQL Editor** →
+**+ New query** → paste → **Run** (once; choose **Run without RLS** if asked). Calling hours can be
+switched back on any time from **Dashboard → Phone system → Calling hours**.
