@@ -30,15 +30,26 @@ export async function getLive(): Promise<LiveData> {
     supabase.from("rep_presence").select("rep_id, status, status_since, last_heartbeat_at, current_call_id"),
     supabase.from("settings").select("conference_calls").eq("id", 1).single(),
   ]);
-  const callIds = (presence ?? []).map((p) => p.current_call_id).filter(Boolean) as string[];
-  const { data: calls } = callIds.length
+  // Live calls come from the call records (kept up to date by Twilio), not only from the rep's
+  // browser status, so a call stays listenable even if their CRM tab is in the background.
+  const repIds = (people ?? []).map((p) => p.id);
+  const since = new Date(Date.now() - 4 * 3600_000).toISOString();
+  const { data: calls } = repIds.length
     ? await supabase
         .from("calls")
-        .select("id, conference, answered_at, ended_at, to_number, lead_id, lead:leads(business_name, contact_name)")
-        .in("id", callIds)
+        .select("id, rep_id, started_at, conference, answered_at, ended_at, to_number, lead_id, lead:leads(business_name, contact_name)")
+        .in("rep_id", repIds)
+        .is("ended_at", null)
+        .not("twilio_call_sid", "is", null)
+        .gte("started_at", since)
+        .order("started_at", { ascending: false })
     : { data: [] };
-  type C = { id: string; conference: boolean; answered_at: string | null; ended_at: string | null; to_number: string; lead_id: string | null; lead: { business_name: string; contact_name: string | null } | null };
-  const callById = new Map(((calls ?? []) as unknown as C[]).map((c) => [c.id, c]));
+  type C = {
+    id: string; rep_id: string; started_at: string; conference: boolean; answered_at: string | null; ended_at: string | null;
+    to_number: string; lead_id: string | null; lead: { business_name: string; contact_name: string | null } | null;
+  };
+  const liveCall = new Map<string, C>();
+  for (const c of (calls ?? []) as unknown as C[]) if (c.conference && !liveCall.has(c.rep_id)) liveCall.set(c.rep_id, c);
   const byRep = new Map((presence ?? []).map((p) => [p.rep_id, p]));
   const stale = (iso: string | null) => !iso || Date.now() - Date.parse(iso) > 2 * 60_000;
 
@@ -46,13 +57,15 @@ export async function getLive(): Promise<LiveData> {
   for (const person of people ?? []) {
     const p = byRep.get(person.id);
     const offline = !p || p.status === "offline" || stale(p.last_heartbeat_at);
-    const c = !offline && p!.status === "on_call" && p!.current_call_id ? callById.get(p!.current_call_id) : undefined;
+    let c = liveCall.get(person.id);
+    // A fresh status that changed after the call started (e.g. "wrapping up") means it's over.
+    if (c && p && !offline && p.status !== "on_call" && Date.parse(p.status_since) > Date.parse(c.started_at)) c = undefined;
     reps.push({
       rep_id: person.id,
       name: person.full_name || person.email,
-      status: offline ? "offline" : p!.status,
-      since: offline ? null : p!.status_since,
-      call: c && c.conference && !c.ended_at
+      status: c ? "on_call" : offline ? "offline" : p!.status,
+      since: c ? c.started_at : offline ? null : p!.status_since,
+      call: c
         ? {
             id: c.id,
             answered: Boolean(c.answered_at),
