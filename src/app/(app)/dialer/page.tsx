@@ -8,7 +8,7 @@ import { Dialer } from "./dialer";
 
 export default async function DialerPage({ searchParams }: PageProps<"/dialer">) {
   const me = await requireUser();
-  const { lead } = await searchParams;
+  const { lead, from } = await searchParams;
   const c = twilioConfig();
   const payments = await paymentSetup(me);
 
@@ -22,7 +22,7 @@ export default async function DialerPage({ searchParams }: PageProps<"/dialer">)
   return (
     <>
       <PageHeader title={single ? "Call lead" : "Dialer"} />
-      <Dialer callingReady={c.ready} callingProblem={c.ready ? undefined : "Twilio settings missing"} singleLead={single} payments={payments} />
+      <Dialer callingReady={c.ready} callingProblem={c.ready ? undefined : "Twilio settings missing"} singleLead={single} singleReturn={from === "missed" ? "missed" : undefined} payments={payments} />
     </>
   );
 }

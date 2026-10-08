@@ -11,6 +11,7 @@ import {
   getCallProgress,
   getVoiceToken,
   loadLeadContext,
+  removeFromMissed,
   lookupNumber,
   releaseLead,
   saveCallAsLead,
@@ -33,8 +34,8 @@ export type Monitor = MonitorTarget & { callId: string; repName: string; mode: M
 export type Phase = "idle" | "loading" | "empty" | "lead" | "calling" | "wrapup" | "paused";
 export type PauseReason = "lunch" | "break" | "meeting" | "training" | "other";
 /** EAST / WEST = shared pool; MINE = the rep's private list. */
-export type ListName = "EAST" | "WEST" | "MINE";
-export const LIST_LABELS: Record<ListName, string> = { EAST: "EAST", WEST: "WEST", MINE: "MY LIST" };
+export type ListName = "EAST" | "WEST" | "MINE" | "MISSED";
+export const LIST_LABELS: Record<ListName, string> = { EAST: "EAST", WEST: "WEST", MINE: "MY LIST", MISSED: "DEMO MISSED" };
 export type CallState = "connecting" | "ringing" | "open" | null;
 
 export const PAUSE_LABELS: Record<PauseReason, string> = {
@@ -76,7 +77,10 @@ type DialerApi = {
   loadNext: (l: ListName) => Promise<void>;
   pause: () => Promise<void>;
   resume: () => Promise<void>;
-  startSingle: (c: LeadContext) => boolean;
+  /** returnTo: where to go after the outcome (default: the lead's page). */
+  startSingle: (c: LeadContext, returnTo?: string) => boolean;
+  /** Take the current lead out of the Demo Missed folder (and move on when dialing that folder). */
+  removeCurrentFromMissed: () => Promise<void>;
   call: () => Promise<void>;
   hangUp: () => void;
   toggleMute: () => void;
@@ -248,13 +252,15 @@ export function DialerProvider({ children }: { children: ReactNode }) {
   }, [list, loadNext]);
 
   /** Switch to calling one of the rep's own leads. Not allowed mid-call. */
-  const startSingle = useCallback((c: LeadContext) => {
+  const singleReturn = useRef<string | null>(null);
+  const startSingle = useCallback((c: LeadContext, returnTo?: string) => {
     if (phase === "calling" || phase === "wrapup") {
       setError("Finish your current call (pick an outcome) before calling another lead.");
       return false;
     }
     if (phase !== "idle") void setPresence({ status: "idle" }); // gives back any queue lead
     setMode("single");
+    singleReturn.current = returnTo ?? null;
     setCtx(c);
     setCallId(null);
     setError(null);
@@ -515,7 +521,10 @@ export function DialerProvider({ children }: { children: ReactNode }) {
       setMode("queue");
       setPhase("idle");
       void setPresence({ status: "idle" });
-      router.push(`/leads/${id}`);
+      const back = singleReturn.current;
+      singleReturn.current = null;
+      if (back === "missed") setList("MISSED");
+      router.push(back === "missed" ? "/dialer" : `/leads/${id}`);
       router.refresh();
       return;
     }
@@ -541,6 +550,14 @@ export function DialerProvider({ children }: { children: ReactNode }) {
     setCtx((c) => (c ? { ...c, lead: { ...c.lead, ...patch } } : c));
   }, []);
 
+  const removeCurrentFromMissed = useCallback(async () => {
+    if (!ctx) return;
+    const res = await removeFromMissed(ctx.lead.id);
+    if (res.error) return setError(res.error);
+    if (mode === "queue" && list === "MISSED" && phase === "lead") return loadNext(list);
+    setCtx((c) => (c ? { ...c, lead: { ...c.lead, missed_since: null } } : c));
+  }, [ctx, mode, list, phase, loadNext]);
+
   /** Re-read the lead, notes, and calls (after an edit). */
   const reloadLead = useCallback(async () => {
     const id = ctx?.lead.id;
@@ -553,7 +570,7 @@ export function DialerProvider({ children }: { children: ReactNode }) {
     phase, fromNumber, mode, manualPhone, list, ctx, error, callId, callState, answeredAt, muted, pauseReason, pausedAt, busy, paying,
     setList, setPauseReason, setError, setPaying, setPhase,
     startDialing, stopDialing, loadNext, pause, resume, startSingle, call, hangUp, toggleMute, sendDigits,
-    submitDisposition, addNote, patchLead, reloadLead, dialNumber, cancelManual, saveManualLead, closeUnknown,
+    submitDisposition, addNote, patchLead, reloadLead, removeCurrentFromMissed, dialNumber, cancelManual, saveManualLead, closeUnknown,
     monitor, listenIn, switchMonitorMode, leaveMonitor,
   };
   return <DialerContext.Provider value={api}>{children}</DialerContext.Provider>;

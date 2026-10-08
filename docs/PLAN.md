@@ -159,6 +159,16 @@ browser asks "Leave site?" first).
   duplicated. Another rep's client is blocked. Admin picks which rep it's for.
 - Calendar bookings do **not** count as "appointments set". Only the dialer's Appointment set outcome counts.
 
+### Demo missed folder
+- Marking an appointment **Demo missed** puts the lead in its rep's **Demo missed folder**
+  (`leads.missed_since`). Each rep has their own; admin sees all (Leads → Demo missed folders).
+- Dialer list **DEMO MISSED** (next to EAST / WEST / MY LIST): picking it shows the folder (every
+  person, with Call now / Edit / Remove) and **Start dialing** goes dial-next through it. Each lead
+  comes up **once a day** (their time zone), with **no limit**: reps chase as long as they want.
+- Leaves the folder when: rebooked (new or rescheduled appointment), Sold, Not interested, Do Not
+  Call, Bad number, or the rep clicks **Remove** (in the folder list or on the dialer, only for
+  folder leads). Call now from the folder returns to the folder after the outcome.
+
 ### Calendar details (built in step 4)
 - Week view with time blocks (business name, time, phone); phones get a day-by-day list.
   Admin sees everyone (color per rep) with a rep filter.

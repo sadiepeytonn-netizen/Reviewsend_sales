@@ -32,6 +32,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
   const list = one(sp.list);
   const status = one(sp.status);
   const source = one(sp.source);
+  const folder = one(sp.folder);
   const page = Math.max(1, Number.parseInt(one(sp.page) || "1", 10) || 1);
 
   const supabase = await createClient();
@@ -42,6 +43,12 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
     supabase.rpc("private_list_stats"),
     supabase.from("profiles").select("id, full_name, email").eq("active", true).order("full_name"),
   ]);
+  // Demo missed folders, per rep (needs migration 0011; hidden until then).
+  const { data: missedData } = await supabase.from("leads").select("owner_id").not("missed_since", "is", null);
+  const missedByRep = new Map<string, number>();
+  for (const r of (missedData ?? []) as { owner_id: string | null }[]) {
+    if (r.owner_id) missedByRep.set(r.owner_id, (missedByRep.get(r.owner_id) ?? 0) + 1);
+  }
   const privateLists = ((privateData ?? []) as PrivateRow[]).filter((r) => Number(r.total) > 0);
   const nameOf = new Map((people ?? []).map((p) => [p.id as string, (p.full_name || p.email) as string]));
   const inventory = (inv ?? []) as InventoryRow[];
@@ -57,6 +64,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
   if (list === "none") query = query.is("list", null);
   if (status && status in STATUS_LABELS) query = query.eq("status", status);
   if (source) query = query.eq("lead_source", source);
+  if (folder === "missed") query = query.not("missed_since", "is", null);
   if (q) {
     // Keep only characters that are safe inside a search filter.
     const safe = q.replace(/[^a-zA-Z0-9 &'.-]/g, " ").trim();
@@ -72,7 +80,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const linkFor = (overrides: Record<string, string | number>) => {
-    const params = new URLSearchParams({ q, list, status, source, page: String(page) });
+    const params = new URLSearchParams({ q, list, status, source, folder, page: String(page) });
     for (const [k, v] of Object.entries(overrides)) params.set(k, String(v));
     for (const [k, v] of [...params]) if (!v || (k === "page" && v === "1")) params.delete(k);
     const s = params.toString();
@@ -125,6 +133,23 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
           {noList.total.toLocaleString()} lead{noList.total === 1 ? "" : "s"} couldn&apos;t be placed on EAST or WEST (unknown area code and no state).{" "}
           <Link href={linkFor({ list: "none", page: 1 })} className="font-medium underline">Review them</Link> and set the list by hand.
         </div>
+      )}
+
+      {missedByRep.size > 0 && (
+        <Card className="mt-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-semibold text-gray-900">Demo missed folders</h2>
+            <Link href={linkFor({ folder: "missed", page: 1 })} className="text-sm font-medium text-brand-600 hover:underline">See everyone in them →</Link>
+          </div>
+          <p className="mt-1 text-sm text-gray-500">Missed demos each rep is chasing (their dialer&apos;s DEMO MISSED list, called once a day).</p>
+          <ul className="mt-3 flex flex-wrap gap-2 text-sm">
+            {[...missedByRep.entries()].map(([rep, n]) => (
+              <li key={rep} className="rounded-lg bg-gray-50 px-3 py-1.5 ring-1 ring-gray-200">
+                <span className="font-medium text-gray-900">{nameOf.get(rep) ?? "Former user"}</span> <span className="text-gray-600">· {n}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
 
       {privateLists.length > 0 && (
@@ -201,8 +226,16 @@ export default async function LeadsPage({ searchParams }: PageProps<"/admin/lead
         </Card>
       )}
 
+      {folder === "missed" && (
+        <div className="mt-6 flex items-center gap-3 text-sm text-gray-700">
+          Showing only leads in reps&apos; Demo missed folders.
+          <Link href={linkFor({ folder: "", page: 1 })} className="font-medium text-brand-600 hover:underline">Show all leads</Link>
+        </div>
+      )}
+
       <Card className="mt-6 overflow-hidden p-0">
         <form className="grid gap-3 border-b border-gray-100 p-4 sm:grid-cols-[1fr_9rem_12rem_auto]" action="/admin/leads">
+          {folder && <input type="hidden" name="folder" value={folder} />}
           <Input name="q" defaultValue={q} placeholder="Search business, owner, city, or phone" aria-label="Search" />
           <Select name="list" defaultValue={list} aria-label="List">
             <option value="">All lists</option>

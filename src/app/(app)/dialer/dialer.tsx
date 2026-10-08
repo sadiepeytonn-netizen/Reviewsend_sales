@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Coffee, CreditCard, Grid3x3, Mic, MicOff, Pause, Phone, PhoneCall, PhoneOff, Play, Square, X } from "lucide-react";
+import { Coffee, CreditCard, Grid3x3, Mic, MicOff, Pause, Phone, PhoneCall, PhoneOff, Play, Square, Trash2, X } from "lucide-react";
 import type { PaymentSetup } from "@/lib/payment-setup";
 import { PaymentFlow } from "../payments/payment-flow";
 import { Alert, Badge, Button, Card, Select } from "@/components/ui";
@@ -12,6 +12,7 @@ import { LIST_LABELS, mmss, PAUSE_LABELS, useClock, useDialer, type Phase, type 
 import { LeadDetails, NotesPanel } from "./lead-panels";
 import { KeypadPanel, OwnerName, PhoneTools, SaveNewNumber } from "./keypad";
 import { EditLeadButton } from "./edit-lead";
+import { MissedFolder } from "./missed-folder";
 import { CelebrationToasts, CompetitionPanel, CompetitionStrip, useCompetition } from "./competition";
 import { WrapUp } from "./wrap-up";
 
@@ -19,6 +20,7 @@ export function Dialer({
   callingReady,
   callingProblem,
   singleLead,
+  singleReturn,
   payments,
 }: {
   callingReady: boolean;
@@ -26,6 +28,8 @@ export function Dialer({
   payments: PaymentSetup;
   /** Calling one of the rep's own leads (from My leads), not the queue. */
   singleLead?: LeadContext;
+  /** "missed": after the outcome, go back to the Demo missed folder. */
+  singleReturn?: "missed";
 }) {
   // All call/session state lives in DialerProvider (app layout), so it
   // survives moving to other pages mid-call. This component only draws it.
@@ -41,8 +45,8 @@ export function Dialer({
   useEffect(() => {
     if (!singleLead || started.current === singleLead.lead.id) return;
     started.current = singleLead.lead.id;
-    if (d.ctx?.lead.id !== singleLead.lead.id) d.startSingle(singleLead);
-  }, [singleLead, d]);
+    if (d.ctx?.lead.id !== singleLead.lead.id) d.startSingle(singleLead, singleReturn);
+  }, [singleLead, singleReturn, d]);
 
   const single = mode === "single";
   const manual = mode === "manual";
@@ -131,7 +135,7 @@ export function Dialer({
           {phase === "idle" ? (
             <>
               <div className="flex rounded-lg bg-gray-100 p-1">
-                {(["EAST", "WEST", "MINE"] as const).map((l) => (
+                {(["EAST", "WEST", "MINE", "MISSED"] as const).map((l) => (
                   <button
                     key={l}
                     onClick={() => setList(l)}
@@ -142,7 +146,7 @@ export function Dialer({
                 ))}
               </div>
               <span className="text-sm text-gray-500">
-                {list === "EAST" ? "Eastern + Central" : list === "WEST" ? "Mountain, Pacific, Alaska, Hawaii" : "Leads uploaded just for you"}
+                {list === "EAST" ? "Eastern + Central" : list === "WEST" ? "Mountain, Pacific, Alaska, Hawaii" : list === "MINE" ? "Leads uploaded just for you" : "Your missed demos, each called once a day"}
               </span>
               <Button className="ml-auto" onClick={startDialing} disabled={busy}>
                 <Play className="h-4 w-4" /> Start dialing
@@ -173,10 +177,12 @@ export function Dialer({
 
       {error && <Alert>{error}</Alert>}
 
+      {list === "MISSED" && !single && (phase === "idle" || phase === "empty") && <MissedFolder />}
+
       {phase === "idle" && !single && (
         <Card className="py-16 text-center">
           <Phone className="mx-auto h-10 w-10 text-gray-300" />
-          <p className="mt-3 font-medium text-gray-900">Pick EAST, WEST, or MY LIST, then click Start dialing.</p>
+          <p className="mt-3 font-medium text-gray-900">Pick EAST, WEST, MY LIST, or DEMO MISSED, then click Start dialing.</p>
           <p className="mt-1 text-sm text-gray-500">Leads load one at a time. Nobody else can get the lead you&apos;re on.</p>
         </Card>
       )}
@@ -257,6 +263,17 @@ export function Dialer({
               <div className="mt-4 flex flex-wrap gap-2">
                 <PhoneTools phone={lead.phone_e164} />
                 <EditLeadButton lead={lead} label="Edit lead" onSaved={() => void d.reloadLead()} />
+                {lead.missed_since && (
+                  <Button
+                    variant="danger"
+                    disabled={phase === "calling"}
+                    onClick={() => {
+                      if (window.confirm("Remove this lead from your Demo missed folder? They stay your client.")) void d.removeCurrentFromMissed();
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" /> Remove from Demo missed
+                  </Button>
+                )}
               </div>
 
               {/* Call controls */}

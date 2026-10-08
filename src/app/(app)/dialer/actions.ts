@@ -12,6 +12,8 @@ export type DialerLead = {
   category: string | null; google_rating: number | null; review_count: number | null; google_profile_url: string | null;
   import_notes: string | null; timezone: string | null; list: "EAST" | "WEST" | null; status: LeadStatus;
   attempt_count: number; last_called_at: string | null; owner_id: string | null;
+  /** In the owner's Demo Missed folder since (migration 0011). */
+  missed_since?: string | null;
 };
 export type DialerNote = { id: string; body: string; created_at: string; author: string };
 export type DialerCall = {
@@ -68,12 +70,15 @@ export async function loadLeadContext(leadId: string): Promise<LeadContext | nul
   };
 }
 
-/** Next lead from the shared EAST / WEST pool, or from the rep's own private list ("MINE"). */
-export async function claimNext(list: "EAST" | "WEST" | "MINE"): Promise<{ context?: LeadContext | null; error?: string }> {
+/** Next lead: shared EAST / WEST pool, the rep's private list ("MINE"), or their Demo Missed folder ("MISSED"). */
+export async function claimNext(list: "EAST" | "WEST" | "MINE" | "MISSED"): Promise<{ context?: LeadContext | null; error?: string }> {
   await requireUser();
   const supabase = await createClient();
-  const l = z.enum(["EAST", "WEST", "MINE"]).parse(list);
-  const { data, error } = await supabase.rpc("claim_next_lead", l === "MINE" ? { p_mine: true } : { p_list: l });
+  const l = z.enum(["EAST", "WEST", "MINE", "MISSED"]).parse(list);
+  const { data, error } = await supabase.rpc(
+    "claim_next_lead",
+    l === "MINE" ? { p_mine: true } : l === "MISSED" ? { p_missed: true } : { p_list: l },
+  );
   if (error) return { error: friendly(error.message) };
   if (!data) return { context: null };
   return { context: await loadLeadContext((data as { id: string }).id) };
@@ -94,14 +99,14 @@ export async function heartbeat() {
 const presenceSchema = z.object({
   status: z.enum(["idle", "ready", "on_call", "wrap_up", "paused", "offline"]),
   reason: z.enum(["lunch", "break", "meeting", "training", "other"]).nullable().optional(),
-  list: z.enum(["EAST", "WEST", "MINE"]).nullable().optional(),
+  list: z.enum(["EAST", "WEST", "MINE", "MISSED"]).nullable().optional(),
 });
 
 export async function setPresence(input: z.infer<typeof presenceSchema>): Promise<{ error?: string }> {
   await requireUser();
   const p = presenceSchema.parse(input);
   const supabase = await createClient();
-  const list = p.list === "MINE" ? null : (p.list ?? null); // a private list isn't EAST/WEST
+  const list = p.list === "EAST" || p.list === "WEST" ? p.list : null; // private lists aren't EAST/WEST
   const { error } = await supabase.rpc("set_presence", { p_status: p.status, p_reason: p.reason ?? null, p_list: list });
   return error ? { error: friendly(error.message) } : {};
 }
@@ -390,4 +395,36 @@ export async function editLead(leadId: string, input: LeadEdit): Promise<{ lead?
     db.from("events").insert({ type: "lead_edited", rep_id: me.id, lead_id: id, data: { changes } }),
   ]);
   return { lead: saved as DialerLead };
+}
+
+// ---------------------------------------------------------------------------
+// Demo Missed folder
+// ---------------------------------------------------------------------------
+
+export type MissedRow = Pick<
+  DialerLead,
+  "id" | "business_name" | "contact_name" | "phone_e164" | "email" | "website" | "address" | "city" | "state" | "category"
+  | "google_profile_url" | "last_called_at" | "timezone"
+> & { missed_since: string };
+
+/** Everyone in my Demo Missed folder (admins: pass a rep to see theirs). */
+export async function getMissedFolder(repId?: string): Promise<{ rows: MissedRow[]; error?: string }> {
+  const me = await requireUser();
+  const owner = me.role === "admin" && repId ? z.uuid().parse(repId) : me.id;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("leads")
+    .select("id, business_name, contact_name, phone_e164, email, website, address, city, state, category, google_profile_url, last_called_at, timezone, missed_since")
+    .eq("owner_id", owner)
+    .not("missed_since", "is", null)
+    .order("missed_since", { ascending: true });
+  if (error) return { rows: [], error: "The Demo Missed folder needs the latest database update (0011)." };
+  return { rows: (data ?? []) as MissedRow[] };
+}
+
+export async function removeFromMissed(leadId: string): Promise<{ error?: string }> {
+  await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("remove_from_missed", { p_lead: z.uuid().parse(leadId) });
+  return error ? { error: friendly(error.message) } : {};
 }

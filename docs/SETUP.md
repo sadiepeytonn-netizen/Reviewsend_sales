@@ -392,3 +392,12 @@ keeps working.
 Copy `supabase/migrations/0010_calling_hours_off.sql` from GitHub → Supabase **SQL Editor** →
 **+ New query** → paste → **Run** (once; choose **Run without RLS** if asked). Calling hours can be
 switched back on any time from **Dashboard → Phone system → Calling hours**.
+
+---
+
+# Update: Demo missed folder
+
+Copy `supabase/migrations/0011_demo_missed_folder.sql` from GitHub → Supabase **SQL Editor** →
+**+ New query** → paste → **Run** (once). If Supabase warns about "destructive operations" or RLS,
+choose **Run query** / **Run without RLS**: nothing is deleted. Leads whose latest appointment is
+already marked Demo missed go into their rep's folder right away.
