@@ -89,14 +89,15 @@ export function KeypadPanel({
 export function PhoneTools({ phone }: { phone: string | null }) {
   const [copied, setCopied] = useState(false);
   if (!phone) return null;
-  const pretty = formatPhone(phone);
+  // Plain 10 digits (4042071843): what reps paste into Google to find the business.
+  const digits = phone.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
   return (
     <div className="flex flex-wrap gap-2">
       <Button
         variant="secondary"
         onClick={async () => {
           try {
-            await navigator.clipboard.writeText(pretty);
+            await navigator.clipboard.writeText(digits);
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
           } catch {
@@ -107,7 +108,7 @@ export function PhoneTools({ phone }: { phone: string | null }) {
         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} {copied ? "Copied" : "Copy number"}
       </Button>
       <a
-        href={`https://www.google.com/search?q=${encodeURIComponent(`"${pretty}"`)}`}
+        href={`https://www.google.com/search?q=${digits}`}
         target="_blank"
         rel="noreferrer"
         className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50"
