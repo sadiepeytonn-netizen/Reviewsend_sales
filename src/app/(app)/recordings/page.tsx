@@ -25,6 +25,9 @@ export default async function RecordingsPage({ searchParams }: PageProps<"/recor
   const rep = isAdmin ? one(sp.rep) : "";
   const day = /^\d{4}-\d{2}-\d{2}$/.test(one(sp.day)) ? one(sp.day) : "";
   const outcome = one(sp.outcome);
+  // Folders: calls over 3 minutes (the default: real conversations worth reviewing) or all.
+  const folder = one(sp.folder) === "all" ? "all" : "long";
+  const LONG_SECONDS = 180;
   const page = Math.max(1, Number.parseInt(one(sp.page) || "1", 10) || 1);
 
   const supabase = await createClient();
@@ -43,20 +46,30 @@ export default async function RecordingsPage({ searchParams }: PageProps<"/recor
   if (day) {
     query = query.gte("started_at", zonedMidnight(day).toISOString()).lt("started_at", zonedMidnight(addDays(day, 1)).toISOString());
   }
+  if (folder === "long") query = query.gte("duration_seconds", LONG_SECONDS);
   if (outcome === "none") query = query.is("disposition", null);
   else if (outcome && outcome in DISPOSITION_LABELS) query = query.eq("disposition", outcome);
 
-  const [{ data, count }, { data: people }] = await Promise.all([
+  // Folder sizes (same rep filter; reps only ever count their own via row-level security).
+  const countFor = (long: boolean) => {
+    let q = supabase.from("calls").select("id", { count: "exact", head: true }).not("recording_sid", "is", null).is("recording_deleted_at", null);
+    if (rep) q = q.eq("rep_id", rep);
+    if (long) q = q.gte("duration_seconds", LONG_SECONDS);
+    return q;
+  };
+  const [{ data, count }, { data: people }, { count: longCount }, { count: allCount }] = await Promise.all([
     query,
     isAdmin
       ? supabase.from("profiles").select("id, full_name, email").eq("active", true).order("full_name")
       : Promise.resolve({ data: [] as { id: string; full_name: string; email: string }[] }),
+    countFor(true),
+    countFor(false),
   ]);
   const rows = (data ?? []) as unknown as Row[];
   const total = count ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const linkFor = (p: number) => {
-    const params = new URLSearchParams({ rep, day, outcome, page: String(p) });
+  const linkFor = (p: number, f: string = folder) => {
+    const params = new URLSearchParams({ rep, day, outcome, folder: f === "all" ? "all" : "", page: String(p) });
     for (const [k, v] of [...params]) if (!v || (k === "page" && v === "1")) params.delete(k);
     const s = params.toString();
     return `/recordings${s ? `?${s}` : ""}`;
@@ -70,8 +83,21 @@ export default async function RecordingsPage({ searchParams }: PageProps<"/recor
         description={isAdmin ? "Every recorded call, newest first. Kept for 1 year." : "Your recorded calls, newest first. Kept for 1 year."}
       />
 
+      <div className="mb-4 flex gap-1 rounded-lg bg-gray-100 p-1 text-sm sm:w-fit">
+        {([["long", "Over 3 minutes", longCount], ["all", "All recordings", allCount]] as const).map(([f, label, n]) => (
+          <Link
+            key={f}
+            href={linkFor(1, f)}
+            className={`rounded-md px-4 py-1.5 font-semibold ${folder === f ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            {label} <span className="font-normal text-gray-500">({(n ?? 0).toLocaleString()})</span>
+          </Link>
+        ))}
+      </div>
+
       <Card className="mb-4 p-4">
         <form className="grid gap-3 sm:grid-cols-[repeat(3,minmax(0,12rem))_auto]" action="/recordings">
+          {folder === "all" && <input type="hidden" name="folder" value="all" />}
           {isAdmin && (
             <Select name="rep" defaultValue={rep} aria-label="Rep">
               <option value="">Everyone</option>
@@ -86,13 +112,17 @@ export default async function RecordingsPage({ searchParams }: PageProps<"/recor
           </Select>
           <div className="flex gap-2">
             <Button type="submit" variant="secondary">Show</Button>
-            {(rep || day || outcome) && <Link href="/recordings"><Button type="button" variant="ghost">Clear</Button></Link>}
+            {(rep || day || outcome) && (
+              <Link href={folder === "all" ? "/recordings?folder=all" : "/recordings"}><Button type="button" variant="ghost">Clear</Button></Link>
+            )}
           </div>
         </form>
       </Card>
 
       {rows.length === 0 ? (
-        <Card className="py-12 text-center text-gray-500">No recordings match.</Card>
+        <Card className="py-12 text-center text-gray-500">
+          {folder === "long" ? "No recorded calls over 3 minutes match." : "No recordings match."}
+        </Card>
       ) : (
         <Card className="overflow-hidden p-0">
           <ul className="divide-y divide-gray-100">

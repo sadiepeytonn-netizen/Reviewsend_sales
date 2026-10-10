@@ -145,6 +145,8 @@ browser asks "Leave site?" first).
 - Reps can listen to their own calls. Admin can listen to and download any call.
 - **Recordings** page in the menu: every recorded call, newest first (rep, lead, date, outcome, talk
   time), filter by rep (admin), day, and outcome. Reps see their own; admin sees all + Download.
+  Two folders: **Over 3 minutes** (the default, real conversations worth reviewing) and **All
+  recordings**, each with its count.
 
 ### Calendar
 - Built in. Default appointment length: 30 minutes.
