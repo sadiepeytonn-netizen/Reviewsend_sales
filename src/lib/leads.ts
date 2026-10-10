@@ -51,3 +51,14 @@ export function timezoneLabel(tz: string | null): string {
   if (!tz) return "Unknown";
   return TIMEZONE_LABELS[tz] ?? tz.replace(/^America\//, "").replace(/_/g, " ");
 }
+
+/** Call outcomes as reps see them. */
+export const DISPOSITION_LABELS: Record<string, string> = {
+  no_answer: "No answer",
+  not_interested: "Not interested",
+  appointment_set: "Appointment set",
+  demo_completed: "Demo completed",
+  sold: "Sold",
+  do_not_call: "Do Not Call",
+  bad_number: "Bad number",
+};

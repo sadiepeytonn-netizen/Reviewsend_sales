@@ -5,19 +5,11 @@ import { ExternalLink, Star } from "lucide-react";
 import { Alert, Button, Card } from "@/components/ui";
 import type { DialerCall, DialerLead, DialerNote } from "./actions";
 import { formatTime } from "@/lib/time";
+import { DISPOSITION_LABELS } from "@/lib/leads";
 import { formatPhone } from "@/lib/phone";
 
 const when = (iso: string) => formatTime(iso);
 
-export const DISPOSITION_LABELS: Record<string, string> = {
-  no_answer: "No answer",
-  not_interested: "Not interested",
-  appointment_set: "Appointment set",
-  demo_completed: "Demo completed",
-  sold: "Sold",
-  do_not_call: "Do Not Call",
-  bad_number: "Bad number",
-};
 
 export function LeadDetails({ lead }: { lead: DialerLead }) {
   const site = lead.website && !/^https?:\/\//i.test(lead.website) ? `https://${lead.website}` : lead.website;

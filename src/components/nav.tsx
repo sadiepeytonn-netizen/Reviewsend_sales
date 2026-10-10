@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  AudioLines,
   CalendarDays,
   CreditCard,
   Wallet,
@@ -26,6 +27,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/dnc", label: "Do Not Call", icon: ShieldBan },
   { href: "/dialer", label: "Dialer", icon: PhoneCall },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/recordings", label: "Recordings", icon: AudioLines },
   { href: "/payments", label: "Payments", icon: CreditCard },
   { href: "/admin/commissions", label: "Commissions", icon: Wallet },
 ];
@@ -35,6 +37,7 @@ const REP_NAV: NavItem[] = [
   { href: "/dialer", label: "Dialer", icon: PhoneCall },
   { href: "/my-leads", label: "My leads", icon: ListChecks },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/recordings", label: "Recordings", icon: AudioLines },
   { href: "/payments", label: "Payments", icon: CreditCard },
 ];
 
