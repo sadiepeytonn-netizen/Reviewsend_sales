@@ -36,6 +36,8 @@ export function Dialer({
   const d = useDialer();
   const { phase, list, ctx, error, callId, callState, answeredAt, muted, pauseReason, pausedAt, busy, paying, mode, manualPhone } = d;
   const [showKeypad, setShowKeypad] = useState(false);
+  // Keys pressed on the in-call keypad (shown so the rep knows they went through).
+  const [pressed, setPressed] = useState<{ callId: string | null; digits: string }>({ callId: null, digits: "" });
   const now = useClock(callState === "open" || phase === "paused" || phase === "empty");
   const competition = useCompetition();
   const notOnLead = phase === "idle" || phase === "empty";
@@ -102,17 +104,26 @@ export function Dialer({
       <span className="text-sm text-gray-500">Call dropped? Call them right back, then pick the outcome.</span>
     </>
   );
+  const dtmfShown = pressed.callId === callId ? pressed.digits : "";
   const dtmfPad = (
-    <div className="mt-4 grid w-48 grid-cols-3 gap-2">
+    <div className="mt-4 w-48">
+      <p className="mb-2 h-6 font-mono text-lg tracking-widest text-gray-700" aria-live="polite">
+        {dtmfShown ? `Sent: ${dtmfShown.slice(-16)}` : <span className="text-sm tracking-normal text-gray-400">Press keys for phone menus</span>}
+      </p>
+      <div className="grid grid-cols-3 gap-2">
       {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((k) => (
         <button
           key={k}
-          onClick={() => d.sendDigits(k)}
+          onClick={() => {
+            d.sendDigits(k);
+            setPressed((p) => ({ callId, digits: (p.callId === callId ? p.digits : "") + k }));
+          }}
           className="rounded-lg bg-gray-100 py-2 text-lg font-semibold text-gray-800 hover:bg-gray-200"
         >
           {k}
         </button>
       ))}
+      </div>
     </div>
   );
   const lead = ctx?.lead;

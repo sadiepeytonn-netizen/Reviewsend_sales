@@ -24,7 +24,7 @@ import {
 } from "@/app/(app)/dialer/actions";
 import type { Disposition } from "@/app/(app)/dialer/wrap-up";
 import { switchMonitor } from "@/components/live/actions";
-import { startRingback } from "./ringback";
+import { playDtmf, startRingback } from "./ringback";
 import type { MonitorMode } from "@/lib/twilio";
 
 /** Listening in on another rep's call. */
@@ -345,9 +345,20 @@ export function DialerProvider({ children }: { children: ReactNode }) {
     setMuted(c.isMuted());
   }, []);
 
+  // Conference calls: quick presses are grouped and sent together, so tones don't run over each other.
+  const pendingDigits = useRef("");
+  const digitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sendDigits = useCallback((d: string) => {
+    playDtmf(d);
     if (!conference) return callRef.current?.sendDigits(d);
-    if (callId) void sendCallDigits(callId, d).then((r) => r.error && setError(r.error));
+    if (!callId) return;
+    pendingDigits.current += d;
+    if (digitTimer.current) clearTimeout(digitTimer.current);
+    digitTimer.current = setTimeout(() => {
+      const digits = pendingDigits.current;
+      pendingDigits.current = "";
+      void sendCallDigits(callId, digits).then((r) => r.error && setError(`Keypad: ${r.error}`));
+    }, 600);
   }, [conference, callId]);
 
   // Every 1.5s until known: which company number the call went out on (shown to the rep),

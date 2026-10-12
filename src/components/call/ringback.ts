@@ -30,3 +30,29 @@ export function startRingback(volume = 0.08): () => void {
     void ctx.close();
   };
 }
+
+const DTMF: Record<string, [number, number]> = {
+  "1": [697, 1209], "2": [697, 1336], "3": [697, 1477],
+  "4": [770, 1209], "5": [770, 1336], "6": [770, 1477],
+  "7": [852, 1209], "8": [852, 1336], "9": [852, 1477],
+  "*": [941, 1209], "0": [941, 1336], "#": [941, 1477],
+};
+
+/** A short keypad beep in the rep's headset so they know the press registered. */
+export function playDtmf(key: string, volume = 0.08) {
+  const f = DTMF[key];
+  if (!f || typeof window === "undefined" || !window.AudioContext) return;
+  const ctx = new AudioContext();
+  const gain = ctx.createGain();
+  gain.gain.value = volume;
+  gain.connect(ctx.destination);
+  const oscillators = f.map((hz) => {
+    const o = ctx.createOscillator();
+    o.frequency.value = hz;
+    o.connect(gain);
+    o.start();
+    o.stop(ctx.currentTime + 0.15);
+    return o;
+  });
+  oscillators[0].onended = () => void ctx.close();
+}
