@@ -17,11 +17,11 @@ export type FloorRow = {
 
 /** Who's doing what right now. A rep whose page stopped checking in for 2+ minutes counts as offline. */
 export async function getFloor(): Promise<FloorRow[]> {
-  await requireAdmin();
+  const me = await requireAdmin();
   const supabase = await createClient();
   const today = zonedMidnight(zonedDay(new Date())).toISOString();
   const [{ data: reps }, { data: presence }, { data: calls }] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, email").eq("active", true).eq("role", "rep").order("full_name"),
+    supabase.from("profiles").select("id, full_name, email, role").eq("active", true).order("full_name"),
     supabase.from("rep_presence").select("rep_id, status, pause_reason, list, status_since, last_heartbeat_at, lead:leads!rep_presence_current_lead_id_fkey(business_name)"),
     supabase.from("calls").select("rep_id").gte("started_at", today),
   ]);
@@ -32,10 +32,12 @@ export async function getFloor(): Promise<FloorRow[]> {
   const byRep = new Map(((presence ?? []) as unknown as P[]).map((p) => [p.rep_id, p]));
   const stale = (iso: string | null) => !iso || Date.now() - Date.parse(iso) > 2 * 60_000;
 
-  return (reps ?? []).map((r) => {
+  return (reps ?? []).flatMap((r) => {
     const p = byRep.get(r.id);
     const offline = !p || p.status === "offline" || stale(p.last_heartbeat_at);
-    return {
+    // Admins who also sell appear while working or once they've dialed today (never yourself).
+    if (r.role === "admin" && (r.id === me.id || (offline && !dials.get(r.id)))) return [];
+    return [{
       rep_id: r.id,
       name: r.full_name || r.email,
       status: offline ? "offline" : p!.status,
@@ -44,6 +46,6 @@ export async function getFloor(): Promise<FloorRow[]> {
       since: offline ? p?.last_heartbeat_at ?? null : p!.status_since,
       lead: offline ? null : p!.lead?.business_name ?? null,
       dials_today: dials.get(r.id) ?? 0,
-    };
+    }];
   });
 }

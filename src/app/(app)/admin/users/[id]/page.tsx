@@ -73,9 +73,10 @@ export default async function UserPage({ params }: PageProps<"/admin/users/[id]"
           )}
         </div>
 
-        {user.role === "rep" && (
+        {/* Commission applies to anyone who sells, admins included; coaching switches are for reps only. */}
+        {(
           <div className="space-y-6">
-            {user.can_listen !== undefined && (
+            {user.role === "rep" && user.can_listen !== undefined && (
               <Card>
                 <h2 className="font-medium text-gray-900">Listening in on calls</h2>
                 <p className="mb-4 mt-1 text-sm text-gray-500">

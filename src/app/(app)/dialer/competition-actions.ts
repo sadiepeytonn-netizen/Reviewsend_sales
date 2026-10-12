@@ -28,8 +28,9 @@ export async function getCompetition(since: string | null): Promise<CompetitionD
 
   // Reps can't read each other's calls, so totals are worked out here and only points go back.
   const db = createAdminClient();
-  const { data: reps } = await db.from("profiles").select("id, full_name, email").eq("active", true).eq("role", "rep");
+  const { data: reps } = await db.from("profiles").select("id, full_name, email, role").eq("active", true);
   const repIds = (reps ?? []).map((r) => r.id);
+  const admins = new Set((reps ?? []).filter((r) => r.role === "admin").map((r) => r.id));
   if (!repIds.length) return { week: week.label, isAdmin, board: [], celebrations: [], cursor };
 
   const [{ data: calls }, { data: dispos }, { data: showed }, { data: sales }] = await Promise.all([
@@ -70,8 +71,11 @@ export async function getCompetition(since: string | null): Promise<CompetitionD
   for (const s of sales ?? []) tallies.get(s.rep_id)!.sales += 1;
 
   const names = new Map((reps ?? []).map((r) => [r.id, r.full_name || r.email]));
+  // Admins who also sell are on the board once they've made a call this week.
+  const dialed = new Set((calls ?? []).map((c) => c.rep_id));
+  const competing = repIds.filter((id) => !admins.has(id) || dialed.has(id));
   const board = rank(
-    repIds.map((id) => ({ rep_id: id, name: names.get(id)!, points: totalPoints(tallies.get(id)!), isMe: id === me.id })),
+    competing.map((id) => ({ rep_id: id, name: names.get(id)!, points: totalPoints(tallies.get(id)!), isMe: id === me.id })),
   )
     .map((r) => ({ ...r, tally: r.isMe || isAdmin ? tallies.get(r.rep_id)! : null }))
     .sort((a, b) => a.place - b.place || a.name.localeCompare(b.name));

@@ -131,6 +131,9 @@ browser asks "Leave site?" first).
   don't see the Live section.
 - Reps are never shown that someone is listening (no beep, nothing on screen). Each listen-in is
   logged under the listener, for the admin only.
+- Admins who also sell (e.g. Corban) show in Live, the Dashboard floor, and the weekly board
+  like reps, but only while they're working (online, on a call, or have dialed). Their
+  commission plan shows on their user page too.
 - To listen, you must not be dialing (pause or stop first).
 - Ringing: conference calls don't get Twilio's own ringing sound, so the CRM plays a ringing tone in
   the rep's headset until the prospect answers (Twilio tells the browser instantly; checked every

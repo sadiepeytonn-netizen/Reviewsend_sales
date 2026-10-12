@@ -26,7 +26,7 @@ export async function getLive(): Promise<LiveData> {
   // Allowed listeners see every rep's status (reps can't read each other's rows directly).
   const supabase = createAdminClient();
   const [{ data: people }, { data: presence }, { data: settings }] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, email").eq("active", true).eq("role", "rep").neq("id", me.id).order("full_name"),
+    supabase.from("profiles").select("id, full_name, email, role").eq("active", true).neq("id", me.id).order("full_name"),
     supabase.from("rep_presence").select("rep_id, status, status_since, last_heartbeat_at, current_call_id"),
     supabase.from("settings").select("conference_calls").eq("id", 1).single(),
   ]);
@@ -60,6 +60,8 @@ export async function getLive(): Promise<LiveData> {
     let c = liveCall.get(person.id);
     // A fresh status that changed after the call started (e.g. "wrapping up") means it's over.
     if (c && p && !offline && p.status !== "on_call" && Date.parse(p.status_since) > Date.parse(c.started_at)) c = undefined;
+    // Admins who also sell show up while they're working (online or on a call), not when offline.
+    if (person.role === "admin" && offline && !c) continue;
     reps.push({
       rep_id: person.id,
       name: person.full_name || person.email,
