@@ -56,3 +56,53 @@ export function playDtmf(key: string, volume = 0.08) {
   });
   oscillators[0].onended = () => void ctx.close();
 }
+
+/**
+ * Mixes keypad tones into the rep's outgoing audio, so a phone menu ("press 1 for…") on the
+ * other end hears them. Needed for conference calls, which don't pass key presses through.
+ * Added to the phone once (Twilio "audio processor"); the microphone passes through untouched.
+ */
+export class KeypadTones {
+  private ctx: AudioContext | null = null;
+  private mic: MediaStreamAudioSourceNode | null = null;
+  private out: MediaStreamAudioDestinationNode | null = null;
+  private next = 0;
+
+  async createProcessedStream(stream: MediaStream): Promise<MediaStream> {
+    this.ctx = new AudioContext();
+    this.mic = this.ctx.createMediaStreamSource(stream);
+    this.out = this.ctx.createMediaStreamDestination();
+    this.mic.connect(this.out);
+    void this.ctx.resume();
+    return this.out.stream;
+  }
+
+  async destroyProcessedStream(): Promise<void> {
+    this.mic?.disconnect();
+    await this.ctx?.close().catch(() => {});
+    this.ctx = this.mic = this.out = null;
+  }
+
+  /** Sends one key down the line. Quick presses queue up so tones never overlap. */
+  send(key: string): boolean {
+    const f = DTMF[key];
+    const { ctx, out } = this;
+    if (!f || !ctx || !out) return false;
+    void ctx.resume();
+    const start = Math.max(ctx.currentTime + 0.02, this.next);
+    const end = start + 0.16;
+    this.next = end + 0.09;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.3;
+    gain.connect(out);
+    f.forEach((hz) => {
+      const o = ctx.createOscillator();
+      o.frequency.value = hz;
+      o.connect(gain);
+      o.start(start);
+      o.stop(end);
+      o.onended = () => gain.disconnect();
+    });
+    return true;
+  }
+}

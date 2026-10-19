@@ -15,7 +15,6 @@ import {
   lookupNumber,
   releaseLead,
   saveCallAsLead,
-  sendCallDigits,
   setPresence,
   startCall,
   startManualCall,
@@ -24,7 +23,7 @@ import {
 } from "@/app/(app)/dialer/actions";
 import type { Disposition } from "@/app/(app)/dialer/wrap-up";
 import { switchMonitor } from "@/components/live/actions";
-import { playDtmf, startRingback } from "./ringback";
+import { KeypadTones, playDtmf, startRingback } from "./ringback";
 import type { MonitorMode } from "@/lib/twilio";
 
 /** Listening in on another rep's call. */
@@ -137,6 +136,7 @@ export function DialerProvider({ children }: { children: ReactNode }) {
   const monitorCallRef = useRef<Call | null>(null);
 
   const deviceRef = useRef<Device | null>(null);
+  const keypadTones = useRef(new KeypadTones());
   const callRef = useRef<Call | null>(null);
 
   // Moves to the outcome screen once per call, however it ended.
@@ -168,6 +168,8 @@ export function DialerProvider({ children }: { children: ReactNode }) {
       setError(`Phone error: ${e.message ?? "unknown"}`);
       endCall();
     });
+    // Keypad tones for phone menus ride along in the rep's outgoing audio.
+    await device.audio?.addProcessor(keypadTones.current).catch(() => {});
     deviceRef.current = device;
     return device;
   }, [endCall]);
@@ -345,21 +347,14 @@ export function DialerProvider({ children }: { children: ReactNode }) {
     setMuted(c.isMuted());
   }, []);
 
-  // Conference calls: quick presses are grouped and sent together, so tones don't run over each other.
-  const pendingDigits = useRef("");
-  const digitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Conference calls don't pass key presses through, so the tone is played into the rep's
+  // outgoing audio instead (the phone menu hears it like a real keypad).
   const sendDigits = useCallback((d: string) => {
     playDtmf(d);
     if (!conference) return callRef.current?.sendDigits(d);
-    if (!callId) return;
-    pendingDigits.current += d;
-    if (digitTimer.current) clearTimeout(digitTimer.current);
-    digitTimer.current = setTimeout(() => {
-      const digits = pendingDigits.current;
-      pendingDigits.current = "";
-      void sendCallDigits(callId, digits).then((r) => r.error && setError(`Keypad: ${r.error}`));
-    }, 600);
-  }, [conference, callId]);
+    if (callRef.current?.isMuted()) setError("You're on mute, so the phone menu can't hear the keypad. Unmute first.");
+    else if (!keypadTones.current.send(d)) setError("Keypad: couldn't play the tone. Try again.");
+  }, [conference]);
 
   // Every 1.5s until known: which company number the call went out on (shown to the rep),
   // and for conference calls whether the prospect picked up.

@@ -142,8 +142,8 @@ browser asks "Leave site?" first).
   the rep's headset until the prospect answers (Twilio tells the browser instantly; checked every
   second as a backup).
 - How it works: each call is a private Twilio conference room (rep + prospect). Only the prospect's
-  side is recorded, so whispers are never in recordings. Keypad tones for phone menus are sent
-  through the server (about a half-second delay per key).
+  side is recorded, so whispers are never in recordings. Keypad tones for phone menus are played
+  into the rep's outgoing audio (the server method didn't reach phone menus). Doesn't work while muted.
 - Backup switch on the admin Dashboard (**Phone system**): direct calls (the old way, no listening).
 
 ### Recordings

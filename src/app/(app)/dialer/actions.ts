@@ -268,33 +268,6 @@ export async function getCallProgress(callId: string): Promise<{ answered: boole
   return { answered: Boolean(data?.answered_at), ended: Boolean(data?.ended_at), fromNumber: data?.from_number ?? null };
 }
 
-/** Keypad tones for phone menus on a conference call. */
-export async function sendCallDigits(callId: string, digits: string): Promise<{ error?: string }> {
-  const me = await requireUser();
-  const { findConference, twilioClient } = await import("@/lib/twilio");
-  const { appOrigin } = await import("@/lib/origin");
-  const supabase = await createClient();
-  const { data: call } = await supabase
-    .from("calls")
-    .select("id, rep_id, prospect_call_sid, ended_at")
-    .eq("id", z.uuid().parse(callId))
-    .maybeSingle();
-  if (!call || call.rep_id !== me.id || !call.prospect_call_sid || call.ended_at) return { error: "The call has ended." };
-  const d = digits.replace(/[^0-9*#]/g, "").slice(0, 20);
-  if (!d) return {};
-  try {
-    const conf = await findConference(call.id);
-    if (!conf) return { error: "The call has ended." };
-    await twilioClient()
-      .conferences(conf)
-      .participants(call.prospect_call_sid)
-      .update({ announceUrl: `${await appOrigin()}/api/webhooks/twilio/digits?d=${encodeURIComponent(d)}` });
-    return {};
-  } catch {
-    return { error: "Couldn't send the keypad tones." };
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Editing a lead (anyone who can see it)
 // ---------------------------------------------------------------------------
