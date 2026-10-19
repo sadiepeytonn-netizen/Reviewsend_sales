@@ -32,6 +32,9 @@ Twilio subaccount. Planned address: `sales.reviewsend.io`.
   Google's phone-number data. Split area codes (e.g. 850 Pensacola vs. Tallahassee)
   are resolved by exchange. Falls back to the State column. EAST list = Eastern +
   Central; WEST list = Mountain, Pacific, Alaska, Hawaii. Admin can change a lead's list.
+- The dialer **shuffles** EAST / WEST / MY LIST: every lead has a random order number, so all
+  uploaded files are mixed together instead of dialing one file start to finish (0012).
+  Callbacks set for later still wait until they're due.
 - Column matching on every import (vendor headers vary); common names are guessed
   automatically and the last choice is remembered per set of headers.
 - Only valid US phone numbers are imported; rows without a business name or phone
