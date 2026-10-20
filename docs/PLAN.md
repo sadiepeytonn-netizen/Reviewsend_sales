@@ -157,6 +157,19 @@ browser asks "Leave site?" first).
 - **Starred** (0015): admin clicks the star on a call (optional note: what to listen for). Reps open
   the page on Starred when it has calls; admins open on Over 3 minutes. Click again to un-star.
 
+### Call history (0016)
+- **Call history** in the menu (everyone): every call, newest first (admins: everyone's, filter by
+  rep), filter by day and outcome, play the recording, **Open lead** (reps: details, notes and every
+  call, plus Call now if the lead is theirs; admins: the lead page).
+- **Pick outcome / Change outcome**: the same "How did it go?" form. Reps: their own calls from the
+  last 7 days. Admins: any call, any time. Do Not Call and Sold can't be changed.
+- Counts on the day of the call (stats, leaderboard, weekly board use each call's LATEST outcome).
+  Only the lead's most recent call changes the lead itself; an older call only changes its own
+  outcome (Do Not Call always sticks). Changing away from Appointment set cancels that appointment.
+  Every change is written into the lead's notes.
+- An orange badge on Call history + a reminder show how many of my calls (last 7 days) have no
+  outcome yet.
+
 ### Calendar
 - Built in. Default appointment length: 30 minutes.
 - The same rep who booked runs the demo, then marks it **Showed** or

@@ -8,6 +8,7 @@ import {
   CreditCard,
   Wallet,
   ChartColumn,
+  History,
   Home,
   ListChecks,
   PhoneCall,
@@ -27,6 +28,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/dnc", label: "Do Not Call", icon: ShieldBan },
   { href: "/dialer", label: "Dialer", icon: PhoneCall },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/calls", label: "Call history", icon: History },
   { href: "/recordings", label: "Recordings", icon: AudioLines },
   { href: "/payments", label: "Payments", icon: CreditCard },
   { href: "/admin/commissions", label: "Commissions", icon: Wallet },
@@ -37,11 +39,13 @@ const REP_NAV: NavItem[] = [
   { href: "/dialer", label: "Dialer", icon: PhoneCall },
   { href: "/my-leads", label: "My leads", icon: ListChecks },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/calls", label: "Call history", icon: History },
   { href: "/recordings", label: "Recordings", icon: AudioLines },
   { href: "/payments", label: "Payments", icon: CreditCard },
 ];
 
-export function Nav({ role }: { role: UserRole }) {
+/** Sidebar links. `badges` puts a count on a link (e.g. calls still missing an outcome). */
+export function Nav({ role, badges = {} }: { role: UserRole; badges?: Record<string, number> }) {
   const pathname = usePathname();
   const items = role === "admin" ? ADMIN_NAV : REP_NAV;
 
@@ -72,6 +76,11 @@ export function Nav({ role }: { role: UserRole }) {
           >
             <Icon className="h-4 w-4" />
             {label}
+            {(badges[href] ?? 0) > 0 && (
+              <span className="ml-auto rounded-full bg-amber-500 px-1.5 text-xs font-semibold text-white" title="Calls without an outcome">
+                {badges[href]}
+              </span>
+            )}
           </Link>
         );
       })}

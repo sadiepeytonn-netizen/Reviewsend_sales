@@ -9,6 +9,8 @@ import { Nav } from "@/components/nav";
 import { LiveSection } from "@/components/live/live-section";
 import { allowedModes } from "@/lib/twilio";
 import { signOut } from "@/app/login/actions";
+import { createClient } from "@/lib/supabase/server";
+import { countMissingOutcomes } from "@/lib/call-outcomes";
 
 // The logged-in app: sidebar + page. Every page inside (app) requires an
 // active user who has already replaced their temporary password.
@@ -16,6 +18,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const profile = await requireUser();
   if (profile.must_change_password) redirect("/change-password");
   const modes = allowedModes(profile);
+  // My calls from the last 7 days with no outcome picked (badge on Call history).
+  const missingOutcomes = await countMissingOutcomes(await createClient(), profile.id);
 
   return (
     <DialerProvider>
@@ -29,7 +33,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           <span className="font-semibold text-gray-900">ReviewSend Sales</span>
         </div>
 
-        <Nav role={profile.role} />
+        <Nav role={profile.role} badges={{ "/calls": missingOutcomes }} />
         {modes.length > 0 && <LiveSection />}
 
         <div className="mt-6 border-t border-gray-100 pt-4 md:mt-auto">

@@ -35,13 +35,17 @@ export async function getCompetition(since: string | null): Promise<CompetitionD
 
   const [{ data: calls }, { data: dispos }, { data: showed }, { data: sales }] = await Promise.all([
     db.from("calls").select("rep_id, disposition, duration_seconds").in("rep_id", repIds).gte("started_at", from).lt("started_at", to),
-    db.from("events").select("id, rep_id, lead_id, occurred_at, data").eq("type", "disposition").in("rep_id", repIds).gte("occurred_at", from).lt("occurred_at", to).order("occurred_at"),
+    db.from("events").select("id, rep_id, lead_id, call_id, occurred_at, data").eq("type", "disposition").in("rep_id", repIds).gte("occurred_at", from).lt("occurred_at", to).order("occurred_at"),
     db.from("appointments").select("rep_id, lead_id").eq("status", "showed").in("rep_id", repIds).gte("starts_at", from).lt("starts_at", to),
     db.from("sales").select("id, rep_id, first_paid_at").in("rep_id", repIds).gte("first_paid_at", from).lt("first_paid_at", to),
   ]);
 
-  type Dispo = { id: number; rep_id: string; lead_id: string | null; occurred_at: string; data: { disposition?: string } };
-  const events = (dispos ?? []) as Dispo[];
+  type Dispo = { id: number; rep_id: string; lead_id: string | null; call_id: string | null; occurred_at: string; data: { disposition?: string } };
+  // A call whose outcome was changed later counts only with its latest outcome.
+  const all = (dispos ?? []) as Dispo[];
+  const latest = new Map<string, number>();
+  for (const e of all) if (e.call_id) latest.set(e.call_id, Math.max(latest.get(e.call_id) ?? 0, e.id));
+  const events = all.filter((e) => !e.call_id || latest.get(e.call_id) === e.id);
   const apptEvents = events.filter((e) => e.data?.disposition === "appointment_set" && e.lead_id);
 
   // An appointment counts only the first time a lead is ever booked (re-books after a no-show don't).
