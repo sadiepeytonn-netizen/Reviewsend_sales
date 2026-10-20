@@ -7,6 +7,7 @@ describe("competition scoring", () => {
     expect(callPoints("appointment_set", 60 * 60)).toEqual({ contact: 1, talk: 10 });
     expect(callPoints("no_answer", 900)).toEqual({ contact: 0, talk: 0 }); // voicemail
     expect(callPoints("bad_number", 900)).toEqual({ contact: 0, talk: 0 });
+    expect(callPoints("owner_unavailable", 900)).toEqual({ contact: 0, talk: 0 });
     expect(callPoints(null, 900)).toEqual({ contact: 0, talk: 0 });
   });
 

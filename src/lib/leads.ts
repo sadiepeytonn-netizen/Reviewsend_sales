@@ -55,6 +55,7 @@ export function timezoneLabel(tz: string | null): string {
 /** Call outcomes as reps see them. */
 export const DISPOSITION_LABELS: Record<string, string> = {
   no_answer: "No answer",
+  owner_unavailable: "Owner not available",
   not_interested: "Not interested",
   appointment_set: "Appointment set",
   demo_completed: "Demo completed",

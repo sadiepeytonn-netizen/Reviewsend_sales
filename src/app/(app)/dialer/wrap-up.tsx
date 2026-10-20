@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Alert, Button, Card, Field, Input, Select } from "@/components/ui";
 
-type DispositionKey = "no_answer" | "not_interested" | "appointment_set" | "demo_completed" | "sold" | "do_not_call" | "bad_number";
+type DispositionKey = "no_answer" | "owner_unavailable" | "not_interested" | "appointment_set" | "demo_completed" | "sold" | "do_not_call" | "bad_number";
 type PauseReason = "lunch" | "break" | "meeting" | "training" | "other";
 
 export type Disposition = {
@@ -16,6 +16,7 @@ export type Disposition = {
 
 const OPTIONS: { key: DispositionKey; label: string; style: string }[] = [
   { key: "no_answer", label: "No answer", style: "ring-gray-300 hover:bg-gray-50" },
+  { key: "owner_unavailable", label: "Owner not available", style: "ring-gray-300 hover:bg-gray-50" },
   { key: "not_interested", label: "Not interested", style: "ring-gray-300 hover:bg-gray-50" },
   { key: "appointment_set", label: "Appointment set", style: "ring-green-300 text-green-800 hover:bg-green-50" },
   { key: "demo_completed", label: "Demo completed", style: "ring-green-300 text-green-800 hover:bg-green-50" },
@@ -107,6 +108,12 @@ export function WrapUp({
             </Select>
           </Field>
         </div>
+      )}
+
+      {choice === "owner_unavailable" && (
+        <p className="mt-4 rounded-lg bg-gray-50 p-3 text-sm text-gray-700 ring-1 ring-gray-200">
+          They&apos;ll come back up for another try. Tip: put the owner&apos;s name and the best time to reach them in the note.
+        </p>
       )}
 
       {choice === "sold" && (

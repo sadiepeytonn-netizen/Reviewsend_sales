@@ -130,7 +130,7 @@ export async function startCall(leadId: string): Promise<StartedCall> {
 const disposeSchema = z.object({
   leadId: z.uuid(),
   callId: z.uuid().nullable(),
-  disposition: z.enum(["no_answer", "not_interested", "appointment_set", "demo_completed", "sold", "do_not_call", "bad_number"]),
+  disposition: z.enum(["no_answer", "owner_unavailable", "not_interested", "appointment_set", "demo_completed", "sold", "do_not_call", "bad_number"]),
   note: z.string().max(5000).optional(),
   appointmentStart: z.iso.datetime({ offset: true }).nullable().optional(),
   appointmentMinutes: z.number().int().min(5).max(480).nullable().optional(),

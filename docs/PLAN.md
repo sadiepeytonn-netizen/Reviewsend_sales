@@ -191,7 +191,10 @@ browser asks "Leave site?" first).
 
 ### Stat definitions (built in step 5)
 All in Eastern time, for the chosen range (today / this week / this month / custom).
-- **Dials** = calls started. **Contacts** = calls with an outcome other than No answer / Bad number.
+- **Dials** = calls started. **Contacts** = calls with an outcome other than No answer / Owner not
+  available / Bad number.
+- Outcome **Owner not available** (someone answered, not the owner): the lead goes back in line on
+  the same retry schedule as No answer. Not a contact, no competition points (0014).
 - **Talk time** = connected time from Twilio; average is per answered call.
 - **Logged in** = time with the CRM open (from once-a-minute check-ins; a closed laptop stops
   the clock at its last check-in). **Not calling** = logged in minus time on calls.
