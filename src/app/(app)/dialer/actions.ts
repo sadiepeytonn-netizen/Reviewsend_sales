@@ -56,7 +56,7 @@ export async function loadLeadContext(leadId: string): Promise<LeadContext | nul
   const [{ data: lead }, { data: notes }, { data: calls }] = await Promise.all([
     supabase.from("leads").select("*").eq("id", leadId).maybeSingle(),
     supabase.from("lead_notes").select("id, body, created_at, author:profiles(full_name, email)").eq("lead_id", leadId).order("created_at", { ascending: false }),
-    supabase.from("calls").select("id, started_at, duration_seconds, disposition, recording_sid, recording_deleted_at, from_number, rep:profiles(full_name)").eq("lead_id", leadId).order("started_at", { ascending: false }).limit(300),
+    supabase.from("calls").select("id, started_at, duration_seconds, disposition, recording_sid, recording_deleted_at, from_number, rep:profiles!calls_rep_id_fkey(full_name)").eq("lead_id", leadId).order("started_at", { ascending: false }).limit(300),
   ]);
   if (!lead) return null;
   type NoteRow = { id: string; body: string; created_at: string; author: { full_name: string; email: string } | null };

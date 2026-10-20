@@ -152,8 +152,10 @@ browser asks "Leave site?" first).
 - Everyone (reps and admins) can listen to every call, to learn from each other. Only admins download.
 - **Recordings** page in the menu: every recorded call, newest first (rep, lead, date, outcome, talk
   time), filter by rep, day, and outcome. Everyone sees all calls; admin also gets Download.
-  Two folders: **Over 3 minutes** (the default, real conversations worth reviewing) and **All
+  Folders: **Starred**, **Over 3 minutes** (real conversations worth reviewing) and **All
   recordings**, each with its count.
+- **Starred** (0015): admin clicks the star on a call (optional note: what to listen for). Reps open
+  the page on Starred when it has calls; admins open on Over 3 minutes. Click again to un-star.
 
 ### Calendar
 - Built in. Default appointment length: 30 minutes.
