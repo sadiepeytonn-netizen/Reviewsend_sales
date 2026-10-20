@@ -1,7 +1,9 @@
 -- 0017: Screen share ("Show my screen").
 -- Each rep gets a personal link name (reviewsend.io/corban). Prospects open it and see the rep's
 -- screen right away: no code, no sign-in. Every share is logged (who, when, how long watched).
--- Safe to run while reps are dialing.
+-- Safe to run while reps are dialing. If the CRM is busy it stops after 5 seconds instead of
+-- waiting (and holding everyone up): just click Run again.
+set lock_timeout = '5s';
 
 -- The rep's personal link name: lowercase letters, numbers and dashes.
 alter table public.profiles add column if not exists share_slug text;
