@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { requireUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { formatPhone } from "@/lib/phone";
 import { addDays, zonedMidnight } from "@/lib/stats";
 import { formatTime } from "@/lib/time";
@@ -16,13 +16,13 @@ type Row = {
   rep: { full_name: string; email: string } | null;
 };
 
-/** Every recorded call, newest first. Reps see their own; admins see everyone's and can download. */
+/** Every recorded call, newest first. Everyone hears everyone's calls (to learn from); only admins download. */
 export default async function RecordingsPage({ searchParams }: PageProps<"/recordings">) {
   const me = await requireUser();
   const isAdmin = me.role === "admin";
   const sp = await searchParams;
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
-  const rep = isAdmin ? one(sp.rep) : "";
+  const rep = one(sp.rep);
   const day = /^\d{4}-\d{2}-\d{2}$/.test(one(sp.day)) ? one(sp.day) : "";
   const outcome = one(sp.outcome);
   // Folders: calls over 3 minutes (the default: real conversations worth reviewing) or all.
@@ -30,8 +30,8 @@ export default async function RecordingsPage({ searchParams }: PageProps<"/recor
   const LONG_SECONDS = 180;
   const page = Math.max(1, Number.parseInt(one(sp.page) || "1", 10) || 1);
 
-  const supabase = await createClient();
-  // Row-level security already limits reps to their own calls.
+  // Everyone signed in may listen to every recording, so this reads past the per-rep rules.
+  const supabase = createAdminClient();
   let query = supabase
     .from("calls")
     .select(
@@ -50,7 +50,7 @@ export default async function RecordingsPage({ searchParams }: PageProps<"/recor
   if (outcome === "none") query = query.is("disposition", null);
   else if (outcome && outcome in DISPOSITION_LABELS) query = query.eq("disposition", outcome);
 
-  // Folder sizes (same rep filter; reps only ever count their own via row-level security).
+  // Folder sizes (same rep filter).
   const countFor = (long: boolean) => {
     let q = supabase.from("calls").select("id", { count: "exact", head: true }).not("recording_sid", "is", null).is("recording_deleted_at", null);
     if (rep) q = q.eq("rep_id", rep);
@@ -59,9 +59,7 @@ export default async function RecordingsPage({ searchParams }: PageProps<"/recor
   };
   const [{ data, count }, { data: people }, { count: longCount }, { count: allCount }] = await Promise.all([
     query,
-    isAdmin
-      ? supabase.from("profiles").select("id, full_name, email").eq("active", true).order("full_name")
-      : Promise.resolve({ data: [] as { id: string; full_name: string; email: string }[] }),
+    supabase.from("profiles").select("id, full_name, email").eq("active", true).order("full_name"),
     countFor(true),
     countFor(false),
   ]);
@@ -80,7 +78,7 @@ export default async function RecordingsPage({ searchParams }: PageProps<"/recor
     <>
       <PageHeader
         title="Recordings"
-        description={isAdmin ? "Every recorded call, newest first. Kept for 1 year." : "Your recorded calls, newest first. Kept for 1 year."}
+        description="Everyone's recorded calls, newest first. Kept for 1 year."
       />
 
       <div className="mb-4 flex gap-1 rounded-lg bg-gray-100 p-1 text-sm sm:w-fit">
@@ -98,12 +96,10 @@ export default async function RecordingsPage({ searchParams }: PageProps<"/recor
       <Card className="mb-4 p-4">
         <form className="grid gap-3 sm:grid-cols-[repeat(3,minmax(0,12rem))_auto]" action="/recordings">
           {folder === "all" && <input type="hidden" name="folder" value="all" />}
-          {isAdmin && (
-            <Select name="rep" defaultValue={rep} aria-label="Rep">
-              <option value="">Everyone</option>
-              {(people ?? []).map((p) => <option key={p.id} value={p.id}>{p.full_name || p.email}</option>)}
-            </Select>
-          )}
+          <Select name="rep" defaultValue={rep} aria-label="Rep">
+            <option value="">Everyone</option>
+            {(people ?? []).map((p) => <option key={p.id} value={p.id}>{p.full_name || p.email}</option>)}
+          </Select>
           <Input type="date" name="day" defaultValue={day} aria-label="Day" />
           <Select name="outcome" defaultValue={outcome} aria-label="Outcome">
             <option value="">All outcomes</option>
@@ -142,7 +138,7 @@ export default async function RecordingsPage({ searchParams }: PageProps<"/recor
                     <p className="text-sm text-gray-500">
                       {[
                         formatTime(r.started_at),
-                        isAdmin ? r.rep?.full_name || r.rep?.email : null,
+                        r.rep?.full_name || r.rep?.email,
                         r.disposition ? DISPOSITION_LABELS[r.disposition] ?? r.disposition : "No outcome picked",
                         `talked ${mmss(r.duration_seconds)}`,
                         formatPhone(r.to_number),

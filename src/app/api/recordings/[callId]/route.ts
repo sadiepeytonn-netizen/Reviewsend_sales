@@ -1,17 +1,18 @@
 import { getCurrentProfile } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { z } from "zod";
 import { twilioConfig } from "@/lib/twilio";
 
 // Plays (or, for admins, downloads) a call recording. The recording itself
-// stays in Twilio; this checks the viewer may see the call, then streams it.
+// stays in Twilio; this checks the viewer is signed in, then streams it.
 export async function GET(req: Request, ctx: RouteContext<"/api/recordings/[callId]">) {
   const profile = await getCurrentProfile();
   if (!profile?.active) return new Response("Not signed in", { status: 401 });
   const { callId } = await ctx.params;
 
-  // Row-level security: reps only find their own calls.
-  const supabase = await createClient();
-  const { data: call } = await supabase.from("calls").select("id, recording_sid, started_at, to_number").eq("id", callId).maybeSingle();
+  // Everyone signed in may listen to any recording (only admins download).
+  if (!z.uuid().safeParse(callId).success) return new Response("Recording not found", { status: 404 });
+  const { data: call } = await createAdminClient().from("calls").select("id, recording_sid, started_at, to_number").eq("id", callId).maybeSingle();
   if (!call?.recording_sid) return new Response("Recording not found", { status: 404 });
 
   const c = twilioConfig();

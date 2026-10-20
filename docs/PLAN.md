@@ -149,9 +149,9 @@ browser asks "Leave site?" first).
 
 ### Recordings
 - Kept 1 year.
-- Reps can listen to their own calls. Admin can listen to and download any call.
+- Everyone (reps and admins) can listen to every call, to learn from each other. Only admins download.
 - **Recordings** page in the menu: every recorded call, newest first (rep, lead, date, outcome, talk
-  time), filter by rep (admin), day, and outcome. Reps see their own; admin sees all + Download.
+  time), filter by rep, day, and outcome. Everyone sees all calls; admin also gets Download.
   Two folders: **Over 3 minutes** (the default, real conversations worth reviewing) and **All
   recordings**, each with its count.
 
