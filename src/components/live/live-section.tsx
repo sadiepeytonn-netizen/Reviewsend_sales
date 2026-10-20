@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Ear, Megaphone, MessageCircle } from "lucide-react";
+import { Ear, Megaphone, MessageCircle, MonitorPlay } from "lucide-react";
 import type { MonitorMode } from "@/lib/twilio";
 import { mmss, useClock, useDialer } from "@/components/call/dialer-provider";
 import Link from "next/link";
 import { formatPhone } from "@/lib/phone";
 import { getLive, type LiveData, type LiveRep } from "./actions";
+import { WatchScreen } from "@/components/share/watch-screen";
 
 type LiveCall = NonNullable<LiveRep["call"]>;
 
@@ -54,6 +55,7 @@ export function LiveSection() {
   const d = useDialer();
   const [data, setData] = useState<LiveData | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [watching, setWatching] = useState<{ repId: string; name: string } | null>(null);
   const now = useClock(true);
 
   const load = useCallback(async () => {
@@ -107,6 +109,17 @@ export function LiveSection() {
                   {r.call?.business && <span className="block truncate text-xs text-gray-600" title={r.call.business}>{r.call.business}</span>}
                 </span>
               </button>
+              {r.sharing && (
+                <div className="pb-1.5 pl-7 pr-3">
+                  <button
+                    onClick={() => setWatching({ repId: r.rep_id, name: r.name })}
+                    className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-xs font-medium text-gray-700 ring-1 ring-gray-300 hover:bg-gray-50"
+                    title="See exactly what their prospect sees (they won't know)"
+                  >
+                    <MonitorPlay className="h-3.5 w-3.5 text-[#1F6F5C]" /> Watch screen
+                  </button>
+                </div>
+              )}
               {r.call && (
                 <div className="pb-1.5 pl-7 pr-3">
                   <ProspectPhone phone={r.call.phone} href={leadHref(r.call, data.isAdmin)} className="text-xs text-gray-600" />
@@ -151,6 +164,7 @@ export function LiveSection() {
         })}
         {data.reps.length === 0 && <li className="px-3 text-xs text-gray-400">Nobody&apos;s working right now.</li>}
       </ul>
+      {watching && <WatchScreen repId={watching.repId} name={watching.name} onClose={() => setWatching(null)} />}
     </div>
   );
 }

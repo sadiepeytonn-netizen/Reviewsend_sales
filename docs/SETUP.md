@@ -401,3 +401,23 @@ Copy `supabase/migrations/0011_demo_missed_folder.sql` from GitHub → Supabase 
 **+ New query** → paste → **Run** (once). If Supabase warns about "destructive operations" or RLS,
 choose **Run query** / **Run without RLS**: nothing is deleted. Leads whose latest appointment is
 already marked Demo missed go into their rep's folder right away.
+
+## Screen share links (reviewsend.io/<rep>)
+
+The website (GitHub: `reviewsend-website`) forwards rep names to the CRM. Its `vercel.json` must be:
+
+```json
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/_next/:path*", "destination": "https://sales.reviewsend.io/_next/:path*" },
+    { "source": "/api/share/:path*", "destination": "https://sales.reviewsend.io/api/share/:path*" },
+    { "source": "/:slug([A-Za-z0-9][A-Za-z0-9-]{1,29})", "destination": "https://sales.reviewsend.io/join/:slug" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
+```
+
+- `cleanUrls` makes reviewsend.io/pricing show the Pricing page (not the home page).
+- Website pages always win over rep names; names that aren't a rep go to the home page.
+- Set each rep's name: CRM → Users → the person → **Screen share link**.

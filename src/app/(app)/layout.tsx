@@ -7,6 +7,9 @@ import { CallBar } from "@/components/call/call-bar";
 import { DialerProvider } from "@/components/call/dialer-provider";
 import { Nav } from "@/components/nav";
 import { LiveSection } from "@/components/live/live-section";
+import { ShareProvider } from "@/components/share/share-provider";
+import { ShareButton, SharePanel } from "@/components/share/share-panel";
+import { shareLink } from "@/lib/share/slug";
 import { allowedModes } from "@/lib/twilio";
 import { signOut } from "@/app/login/actions";
 import { createClient } from "@/lib/supabase/server";
@@ -23,6 +26,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <DialerProvider>
+    <ShareProvider>
     <div className="flex min-h-screen flex-col md:flex-row">
       <Heartbeat />
       <aside className="flex shrink-0 flex-col border-b border-gray-200 bg-white px-4 py-4 md:w-60 md:border-r md:border-b-0 md:py-6">
@@ -34,6 +38,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         </div>
 
         <Nav role={profile.role} badges={{ "/calls": missingOutcomes }} />
+        <ShareButton link={profile.share_slug ? shareLink(profile.share_slug) : null} />
         {modes.length > 0 && <LiveSection />}
 
         <div className="mt-6 border-t border-gray-100 pt-4 md:mt-auto">
@@ -61,7 +66,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         <CallBar modes={modes} />
         <div className="pt-6 md:pt-8">{children}</div>
       </main>
+      <SharePanel />
     </div>
+    </ShareProvider>
     </DialerProvider>
   );
 }

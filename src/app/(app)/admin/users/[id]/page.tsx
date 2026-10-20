@@ -8,7 +8,7 @@ import type { CommissionPlanRow, Profile } from "@/lib/types";
 import { Badge, Button, Card, PageHeader } from "@/components/ui";
 import { setActive, setCoaching } from "../actions";
 import { CommissionPlanForm } from "./commission-plan-form";
-import { ProfileForm, ResetPasswordForm } from "./user-forms";
+import { ProfileForm, ResetPasswordForm, ShareSlugForm } from "./user-forms";
 import { formatTime } from "@/lib/time";
 
 const COACHING = [
@@ -64,6 +64,13 @@ export default async function UserPage({ params }: PageProps<"/admin/users/[id]"
           <Card>
             <h2 className="mb-4 font-medium text-gray-900">Details</h2>
             <ProfileForm user={user} />
+          </Card>
+          <Card>
+            <h2 className="font-medium text-gray-900">Screen share link</h2>
+            <p className="mb-4 mt-1 text-sm text-gray-500">
+              Prospects open this to watch their screen during a call: no download, no code.
+            </p>
+            <ShareSlugForm user={user} />
           </Card>
           {!isSelf && (
             <Card>

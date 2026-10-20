@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { DEFAULT_PLAN } from "@/lib/commission";
 import { temporaryPassword } from "@/lib/passwords";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkSlug } from "@/lib/share/slug";
 
 export type ActionState = {
   error?: string;
@@ -195,4 +196,22 @@ export async function setCoaching(formData: FormData) {
   const supabase = createAdminClient();
   await supabase.from("profiles").update({ [p.field]: p.value === "true" }).eq("id", p.userId);
   revalidatePath(`/admin/users/${p.userId}`);
+}
+
+/** The rep's screen share link name: reviewsend.io/<name>. Blank removes it. */
+export async function setShareSlug(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireAdmin();
+  const userId = z.uuid().parse(formData.get("userId"));
+  const typed = String(formData.get("slug") ?? "");
+  const checked = checkSlug(typed);
+  if (checked.error) return { error: checked.error, values: { slug: typed } };
+  const { error } = await createAdminClient().from("profiles").update({ share_slug: checked.slug ?? null }).eq("id", userId);
+  if (error) {
+    if (error.code === "23505") return { error: `Someone else already has reviewsend.io/${checked.slug}.`, values: { slug: typed } };
+    if (error.message.includes("share_slug")) return { error: "Run the screen share database update (0017) first.", values: { slug: typed } };
+    return { error: `Couldn't save: ${error.message}`, values: { slug: typed } };
+  }
+  revalidatePath(`/admin/users/${userId}`);
+  revalidatePath("/", "layout");
+  return { success: checked.slug ? `Saved. Their link is reviewsend.io/${checked.slug}` : "Link removed." };
 }

@@ -13,6 +13,8 @@ export type LiveRep = {
   since: string | null;
   /** Set while the rep is on a call that can be listened to. */
   call: { id: string; answered: boolean; owner: string | null; business: string | null; phone: string; leadId: string | null } | null;
+  /** Sharing their screen right now (Watch screen). */
+  sharing: boolean;
 };
 
 export type LiveData = { modes: MonitorMode[]; conference: boolean; isAdmin: boolean; reps: LiveRep[] };
@@ -48,6 +50,16 @@ export async function getLive(): Promise<LiveData> {
     id: string; rep_id: string; started_at: string; conference: boolean; answered_at: string | null; ended_at: string | null;
     to_number: string; lead_id: string | null; lead: { business_name: string; contact_name: string | null } | null;
   };
+  // Screen shares that are live (the rep's browser checks in every 20 seconds).
+  const { data: shares } = repIds.length
+    ? await supabase
+        .from("screen_shares")
+        .select("rep_id")
+        .in("rep_id", repIds)
+        .is("ended_at", null)
+        .gte("last_seen_at", new Date(Date.now() - 90_000).toISOString())
+    : { data: [] };
+  const sharing = new Set((shares ?? []).map((s) => s.rep_id as string));
   const liveCall = new Map<string, C>();
   for (const c of (calls ?? []) as unknown as C[]) if (c.conference && !liveCall.has(c.rep_id)) liveCall.set(c.rep_id, c);
   const byRep = new Map((presence ?? []).map((p) => [p.rep_id, p]));
@@ -61,7 +73,7 @@ export async function getLive(): Promise<LiveData> {
     // A fresh status that changed after the call started (e.g. "wrapping up") means it's over.
     if (c && p && !offline && p.status !== "on_call" && Date.parse(p.status_since) > Date.parse(c.started_at)) c = undefined;
     // Admins who also sell show up while they're working (online or on a call), not when offline.
-    if (person.role === "admin" && offline && !c) continue;
+    if (person.role === "admin" && offline && !c && !sharing.has(person.id)) continue;
     reps.push({
       rep_id: person.id,
       name: person.full_name || person.email,
@@ -77,6 +89,7 @@ export async function getLive(): Promise<LiveData> {
             leadId: c.lead_id,
           }
         : null,
+      sharing: sharing.has(person.id),
     });
   }
   const order = { on_call: 0, wrap_up: 1, ready: 2, paused: 3, idle: 4, offline: 5 } as const;

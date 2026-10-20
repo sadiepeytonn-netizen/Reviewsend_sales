@@ -15,6 +15,8 @@ export type Profile = {
   can_whisper?: boolean;
   /** Coaching: may barge into a call (everyone hears). */
   can_barge?: boolean;
+  /** Screen share link name: reviewsend.io/<share_slug> (missing until migration 0017). */
+  share_slug?: string | null;
 };
 
 export type ResidualKind = "none" | "flat" | "percent";

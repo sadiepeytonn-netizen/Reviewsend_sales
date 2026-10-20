@@ -170,6 +170,32 @@ browser asks "Leave site?" first).
 - An orange badge on Call history + a reminder show how many of my calls (last 7 days) have no
   outcome yet.
 
+### Screen share ("Show my screen", 0017) — instead of Zoom / Google Meet
+- Each rep has a personal link set by an admin on their user page: **reviewsend.io/<name>**
+  (corban, ryan, sal…). The website's `vercel.json` forwards those names to the CRM's public
+  `/join/<name>` page; the address stays reviewsend.io/<name>. Website page names are reserved.
+- **No waiting room, no code, no sign-in**: the prospect opens the link and sees the screen. If the
+  rep hasn't started, a ReviewSend screen waits and the video appears on its own.
+- Rep: **Show my screen** in the sidebar → Chrome asks what to share (opens on Entire screen;
+  reps pick the presenting monitor, not the CRM one). Panel: link + Copy + **Email link**
+  (Resend), live preview of what goes out, Pause, Switch screen (no reconnect), **Lock** (stops new
+  viewers; off by default), Stop. Keeps going while the rep moves around the CRM.
+- Viewer list for the rep: device (iPhone / Android / Windows computer…), time zone, delay,
+  resolution and fps, time watched, Remove; alerts: phone held upright, not full screen, small
+  window, switched tabs, slow connection, screen looks small.
+- Quality: **smooth motion over sharp text** when slow (maintain framerate); up to 1080p 30fps,
+  ~4 Mbps per viewer, sharp within ~3 seconds. Up to ~5 viewers (each is a separate stream from
+  the rep's computer). Browser to browser (WebRTC); Supabase Realtime finds the two sides;
+  Twilio's relay (TURN) for strict networks, only handed out while that rep is sharing.
+- **Watch screen** in Live (admins + reps with listen access): see exactly what the prospect sees;
+  the rep isn't shown watchers.
+- Logged: `screen_shares` (who, lead, call, peak/total viewers, seconds watched) + a note on the
+  lead. Not yet: a "Demos shown" leaderboard column.
+- Not now: prospect sharing their screen back (maybe for account management later).
+
+### Later: account management
+- Clients after the sale (Google page access, onboarding, check-ins) in this same CRM. Not started.
+
 ### Calendar
 - Built in. Default appointment length: 30 minutes.
 - The same rep who booked runs the demo, then marks it **Showed** or
