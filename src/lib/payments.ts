@@ -34,7 +34,7 @@ const periodStart = (invoice: Stripe.Invoice) => new Date(invoice.created * 1000
  *                      lead becomes Sold + owned by the rep, first-month commission.
  *   - Later invoices → monthly residual for the rep, per their plan at the time of sale.
  */
-export async function recordInvoicePaid(invoice: Stripe.Invoice): Promise<{ handled: boolean }> {
+export async function recordInvoicePaid(invoice: Stripe.Invoice): Promise<{ handled: boolean; saleId?: string; firstPaid?: boolean }> {
   const { saleId, subscriptionId } = await saleIdForInvoice(invoice);
   if (!saleId) return { handled: false };
 
@@ -101,7 +101,7 @@ export async function recordInvoicePaid(invoice: Stripe.Invoice): Promise<{ hand
       );
     }
   }
-  return { handled: true };
+  return { handled: true, saleId: sale.id, firstPaid: isFirst };
 }
 
 export async function markSaleByInvoice(invoice: Stripe.Invoice, status: "past_due") {

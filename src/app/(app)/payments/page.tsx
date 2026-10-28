@@ -6,13 +6,14 @@ import { formatTime } from "@/lib/time";
 import { createClient } from "@/lib/supabase/server";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm-button";
-import { cancelSubscription } from "./actions";
+import { cancelSubscription, retryHandoff } from "./actions";
 import { NewPayment } from "./new-payment";
 
 type Row = {
   id: string; business_name: string | null; contact_name: string | null; setup_fee: number; monthly_price: number;
   status: "pending" | "active" | "past_due" | "canceled"; source: string; payment_method: string | null;
   first_paid_at: string | null; created_at: string; lead_id: string | null; last_error: string | null;
+  package_name: string | null; package_id: string | null; handed_off_at: string | null; handoff_error: string | null;
   rep: { full_name: string; email: string } | null;
   commissions: { kind: string; amount: number }[];
 };
@@ -30,7 +31,7 @@ export default async function PaymentsPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("sales")
-    .select("id, business_name, contact_name, setup_fee, monthly_price, status, source, payment_method, first_paid_at, created_at, lead_id, last_error, rep:profiles!sales_rep_id_fkey(full_name, email), commissions(kind, amount)")
+    .select("id, business_name, contact_name, setup_fee, monthly_price, status, source, payment_method, first_paid_at, created_at, lead_id, last_error, package_name, package_id, handed_off_at, handoff_error, rep:profiles!sales_rep_id_fkey(full_name, email), commissions(kind, amount)")
     .order("created_at", { ascending: false })
     .limit(200);
   const rows = (data ?? []) as unknown as Row[];
@@ -47,7 +48,7 @@ export default async function PaymentsPage() {
         {rows.length === 0 ? (
           <p className="px-6 py-10 text-center text-sm text-gray-500">No payments yet.</p>
         ) : (
-          <table className="w-full min-w-[820px] text-left text-sm">
+          <table className="w-full min-w-[960px] text-left text-sm">
             <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="px-4 py-2 font-medium">Client</th>
@@ -56,6 +57,7 @@ export default async function PaymentsPage() {
                 <th className="px-4 py-2 text-right font-medium">Monthly</th>
                 <th className="px-4 py-2 font-medium">Status</th>
                 <th className="px-4 py-2 font-medium">Paid</th>
+                <th className="px-4 py-2 font-medium">Account Manager CRM</th>
                 <th className="px-4 py-2 text-right font-medium">Commission</th>
                 {setup.isAdmin && <th className="px-4 py-2 text-right font-medium">Residuals</th>}
                 {setup.isAdmin && <th className="px-4 py-2" />}
@@ -71,7 +73,7 @@ export default async function PaymentsPage() {
                       {r.lead_id ? (
                         <Link href={`/leads/${r.lead_id}`} className="font-medium text-gray-900 hover:underline">{r.business_name}</Link>
                       ) : <span className="font-medium text-gray-900">{r.business_name}</span>}
-                      <p className="text-xs text-gray-500">{r.contact_name}{r.source === "manual" ? " · recorded manually" : ""}</p>
+                      <p className="text-xs text-gray-500">{[r.package_name, r.contact_name].filter(Boolean).join(" · ")}{r.source === "manual" ? " · recorded manually" : ""}</p>
                       {r.status === "pending" && r.last_error && <p className="text-xs text-red-600">{r.last_error}</p>}
                     </td>
                     {setup.isAdmin && <td className="px-4 py-2 text-gray-700">{r.rep?.full_name || r.rep?.email}</td>}
@@ -79,6 +81,24 @@ export default async function PaymentsPage() {
                     <td className="px-4 py-2 text-right tabular-nums">{money(r.monthly_price)}</td>
                     <td className="px-4 py-2"><Badge tone={STATUS[r.status].tone}>{STATUS[r.status].label}</Badge></td>
                     <td className="px-4 py-2 whitespace-nowrap text-gray-600">{r.first_paid_at ? formatTime(r.first_paid_at, "date") : "—"}</td>
+                    <td className="px-4 py-2">
+                      {r.handed_off_at ? (
+                        <Badge tone="green">Sent ✓</Badge>
+                      ) : r.handoff_error ? (
+                        <div className="space-y-1">
+                          <Badge tone="red">Not sent yet</Badge>
+                          <p className="max-w-[220px] text-xs text-red-600">{r.handoff_error}</p>
+                          {setup.isAdmin && (
+                            <form action={retryHandoff}>
+                              <input type="hidden" name="saleId" value={r.id} />
+                              <button className="text-xs font-medium text-brand-700 hover:underline">Try again</button>
+                            </form>
+                          )}
+                        </div>
+                      ) : r.first_paid_at && r.package_id ? (
+                        <Badge tone="amber">Sending…</Badge>
+                      ) : <span className="text-gray-400">—</span>}
+                    </td>
                     <td className="px-4 py-2 text-right tabular-nums">{first ? money(first) : "—"}</td>
                     {setup.isAdmin && <td className="px-4 py-2 text-right tabular-nums">{resid ? money(resid) : "—"}</td>}
                     {setup.isAdmin && (

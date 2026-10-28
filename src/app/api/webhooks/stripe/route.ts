@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { linkCheckoutSession, markSaleByInvoice, markSubscriptionCanceled, recordInvoicePaid } from "@/lib/payments";
 import { stripe, stripeConfig } from "@/lib/stripe";
+import { amCrmReady, handOffSale } from "@/lib/am-crm";
 
 // Stripe calls this URL when payments happen. Configure it in Stripe →
 // Developers → Webhooks (see docs/SETUP.md, step 6). Events for payments that
@@ -17,9 +18,13 @@ export async function POST(req: Request) {
 
   try {
     switch (event.type) {
-      case "invoice.paid":
-        await recordInvoicePaid(event.data.object);
+      case "invoice.paid": {
+        const paid = await recordInvoicePaid(event.data.object);
+        // First payment → send the new client to the Account Manager CRM (decision #23).
+        // If that fails, the 500 below makes Stripe deliver this event again later.
+        if (paid.saleId && amCrmReady()) await handOffSale(paid.saleId);
         break;
+      }
       case "invoice.payment_failed":
         await markSaleByInvoice(event.data.object, "past_due");
         break;

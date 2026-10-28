@@ -34,6 +34,8 @@ export function PaymentFlow({
   emailEnabled,
   onboardingUrl,
   limits,
+  packages,
+  handoffReady,
   onDone,
 }: {
   lead?: PrefillLead | null;
@@ -43,7 +45,9 @@ export function PaymentFlow({
   publishableKey: string | null;
   emailEnabled: boolean;
   onboardingUrl: string;
-  limits: { setupMax: number; monthlyMin: number; monthlyMax: number };
+  limits: { monthlyMin: number; monthlyMax: number };
+  packages: { id: string; name: string; monthly_price: number; description: string | null }[];
+  handoffReady: boolean;
   onDone?: () => void;
 }) {
   const [step, setStep] = useState<Step>("details");
@@ -63,6 +67,7 @@ export function PaymentFlow({
     monthlyPrice: "",
     notes: "",
     repId: defaultRepId,
+    packageId: "",
   });
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
   const setup = Number(form.setupFee || 0);
@@ -123,7 +128,7 @@ export function PaymentFlow({
     e.preventDefault();
     setError(null);
     if (monthly < limits.monthlyMin || monthly > limits.monthlyMax) return setError(`Monthly price must be between ${usd(limits.monthlyMin)} and ${usd(limits.monthlyMax)}.`);
-    if (setup > limits.setupMax) return setError(`Setup fee can be at most ${usd(limits.setupMax)}.`);
+    if (handoffReady && !form.packageId) return setError(packages.length ? "Pick the package the client is buying." : "The package list couldn't be loaded. Refresh the page and try again.");
     setBusy(true);
     const res = await startSale({
       leadId: picked?.id ?? null,
@@ -134,6 +139,7 @@ export function PaymentFlow({
       phone: form.phone,
       setupFee: setup,
       monthlyPrice: monthly,
+      packageId: form.packageId || undefined,
       notes: form.notes,
     });
     setBusy(false);
@@ -238,15 +244,35 @@ export function PaymentFlow({
             </div>
           )}
 
+          {handoffReady && (
+            <div>
+              <p className="mb-1 text-sm font-medium text-gray-700">Package</p>
+              {packages.length === 0 ? (
+                <Alert tone="amber">The package list couldn&apos;t be loaded from the Account Manager CRM. Refresh the page and try again.</Alert>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {packages.map((p) => (
+                    <button key={p.id} type="button"
+                      onClick={() => setForm((f) => ({ ...f, packageId: p.id, monthlyPrice: String(p.monthly_price) }))}
+                      className={`rounded-lg px-4 py-3 text-left text-sm ring-1 ${form.packageId === p.id ? "bg-brand-50 ring-2 ring-brand-600" : "bg-white ring-gray-200 hover:bg-gray-50"}`}>
+                      <span className="block font-semibold text-gray-900">{p.name} · {usd(p.monthly_price)}/mo</span>
+                      {p.description && <span className="block text-xs text-gray-500">{p.description}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Business name" htmlFor="pf-business"><Input id="pf-business" value={form.businessName} onChange={(e) => set("businessName", e.target.value)} required /></Field>
             <Field label="Client name" htmlFor="pf-contact"><Input id="pf-contact" value={form.contactName} onChange={(e) => set("contactName", e.target.value)} required /></Field>
             <Field label="Email (for the receipt)" htmlFor="pf-email"><Input id="pf-email" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} required /></Field>
             <Field label="Phone" htmlFor="pf-phone"><Input id="pf-phone" value={form.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
-            <Field label={`Setup fee ($0–$${limits.setupMax})`} htmlFor="pf-setup" hint="Enter 0 to waive it.">
-              <Input id="pf-setup" type="number" min={0} max={limits.setupMax} step="0.01" value={form.setupFee} onChange={(e) => set("setupFee", e.target.value)} placeholder="0" />
+            <Field label="Setup fee" htmlFor="pf-setup" hint="Whatever you agreed with the client. Enter 0 to waive it.">
+              <Input id="pf-setup" type="number" min={0} step="0.01" value={form.setupFee} onChange={(e) => set("setupFee", e.target.value)} placeholder="0" />
             </Field>
-            <Field label={`Monthly price ($${limits.monthlyMin}–$${limits.monthlyMax})`} htmlFor="pf-monthly">
+            <Field label={`Monthly price ($${limits.monthlyMin}–$${limits.monthlyMax})`} htmlFor="pf-monthly" hint={form.packageId ? "Filled in from the package; change it only if you agreed a different price." : undefined}>
               <Input id="pf-monthly" type="number" min={limits.monthlyMin} max={limits.monthlyMax} step="0.01" value={form.monthlyPrice} onChange={(e) => set("monthlyPrice", e.target.value)} placeholder="299" required />
             </Field>
             {isAdmin && (

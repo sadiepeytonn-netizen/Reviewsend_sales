@@ -7,6 +7,7 @@ import { requireAdmin, requireUser } from "@/lib/auth";
 import { planFromRow, type CommissionPlan } from "@/lib/commission";
 import { firstMonthCommission } from "@/lib/commission";
 import { recordInvoicePaid } from "@/lib/payments";
+import { amCrmReady, handOffSale, sellablePackages } from "@/lib/am-crm";
 import { cents, crmProducts, describeStripeError, stripe, stripeConfig } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -24,13 +25,27 @@ const saleSchema = z.object({
   phone: z.string().trim().max(30).optional(),
   setupFee: money,
   monthlyPrice: money,
+  packageId: z.string().trim().max(100).optional(),
   notes: z.string().trim().max(2000).optional(),
 });
 export type SaleInput = z.input<typeof saleSchema>;
 
 async function limits() {
-  const { data } = await createAdminClient().from("settings").select("setup_fee_max, monthly_min, monthly_max").eq("id", 1).single();
-  return { setupMax: Number(data?.setup_fee_max ?? 599), monthlyMin: Number(data?.monthly_min ?? 199), monthlyMax: Number(data?.monthly_max ?? 699) };
+  const { data } = await createAdminClient().from("settings").select("monthly_min, monthly_max").eq("id", 1).single();
+  return { monthlyMin: Number(data?.monthly_min ?? 199), monthlyMax: Number(data?.monthly_max ?? 699) };
+}
+
+/**
+ * The package the rep picked, checked against the Account Manager CRM's list.
+ * Required whenever that list is available; the setup fee has no limit (decision #46).
+ */
+async function pickedPackage(packageId: string | undefined): Promise<{ pkg?: { id: string; name: string } | null; error?: string }> {
+  if (!amCrmReady()) return { pkg: null };
+  const packages = await sellablePackages();
+  if (packages.length === 0) return { error: "Couldn't load the package list from the Account Manager CRM. Try again in a moment." };
+  const pkg = packages.find((p) => p.id === packageId);
+  if (!pkg) return { error: "Pick the package the client is buying." };
+  return { pkg: { id: pkg.id, name: pkg.name } };
 }
 
 async function planFor(repId: string): Promise<CommissionPlan | null> {
@@ -48,7 +63,8 @@ export async function startSale(input: SaleInput): Promise<{ saleId?: string; er
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const s = parsed.data;
   const l = await limits();
-  if (s.setupFee > l.setupMax) return { error: `Setup fee can be at most $${l.setupMax}.` };
+  const picked = await pickedPackage(s.packageId);
+  if (picked.error) return { error: picked.error };
   if (s.monthlyPrice < l.monthlyMin || s.monthlyPrice > l.monthlyMax) return { error: `Monthly price must be between $${l.monthlyMin} and $${l.monthlyMax}.` };
 
   // Reps always credit themselves. An admin can run a payment for any rep.
@@ -63,6 +79,7 @@ export async function startSale(input: SaleInput): Promise<{ saleId?: string; er
     lead_id: s.leadId, rep_id: repId, setup_fee: s.setupFee, monthly_price: s.monthlyPrice, source: "stripe",
     status: "pending", plan_snapshot: await planFor(repId), created_by: me.id,
     business_name: s.businessName, contact_name: s.contactName, email: s.email.toLowerCase(), phone: s.phone || null, notes: s.notes || null,
+    package_id: picked.pkg?.id ?? null, package_name: picked.pkg?.name ?? null,
   }).select("id").single();
   if (error) return { error: error.message };
   return { saleId: data.id as string };
@@ -124,7 +141,11 @@ export async function chargeCard(saleId: string, paymentMethodId: string): Promi
     );
     await db.from("sales").update({ payment_method: "card", stripe_customer_id: customer.id, stripe_subscription_id: subscription.id }).eq("id", sale.id);
     const invoice = subscription.latest_invoice as Stripe.Invoice | null;
-    if (invoice && invoice.status === "paid") await recordInvoicePaid(invoice);
+    if (invoice && invoice.status === "paid") {
+      await recordInvoicePaid(invoice);
+      // Send the new client over now; if it fails, Stripe's webhook tries again.
+      await handOffSale(sale.id).catch(() => null);
+    }
     revalidatePath("/payments");
     return { ok: true };
   } catch (err) {
@@ -223,6 +244,8 @@ export async function recordManualSale(input: SaleInput & { paidOn?: string }): 
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const s = parsed.data;
   const repId = s.repId ?? me.id;
+  const picked = await pickedPackage(s.packageId);
+  if (picked.error) return { error: picked.error };
   const plan = await planFor(repId);
   const paidAt = input.paidOn && /^\d{4}-\d{2}-\d{2}$/.test(input.paidOn) ? new Date(`${input.paidOn}T16:00:00Z`).toISOString() : new Date().toISOString();
   const db = createAdminClient();
@@ -230,6 +253,7 @@ export async function recordManualSale(input: SaleInput & { paidOn?: string }): 
     lead_id: s.leadId, rep_id: repId, setup_fee: s.setupFee, monthly_price: s.monthlyPrice, source: "manual", payment_method: "manual",
     status: "active", plan_snapshot: plan, first_paid_at: paidAt, created_by: me.id,
     business_name: s.businessName, contact_name: s.contactName, email: s.email.toLowerCase(), phone: s.phone || null, notes: s.notes || null,
+    package_id: picked.pkg?.id ?? null, package_name: picked.pkg?.name ?? null,
   }).select("id").single();
   if (error) return { error: error.message };
   if (plan) {
@@ -241,8 +265,18 @@ export async function recordManualSale(input: SaleInput & { paidOn?: string }): 
   }
   await db.from("events").insert({ type: "sale_paid", rep_id: repId, lead_id: s.leadId, data: { sale_id: data.id, manual: true } });
   if (s.leadId) await db.from("leads").update({ status: "sold", owner_id: repId }).eq("id", s.leadId);
+  await handOffSale(data.id).catch(() => null);
   revalidatePath("/payments");
   return { ok: true };
+}
+
+/** Admin: try sending a paid sale to the Account Manager CRM again. */
+export async function retryHandoff(formData: FormData) {
+  await requireAdmin();
+  const sale = await loadSale(String(formData.get("saleId")));
+  if (!sale) return;
+  await handOffSale(sale.id).catch(() => null);
+  revalidatePath("/payments");
 }
 
 /** Lead search for the payment form (only leads the caller can see). */

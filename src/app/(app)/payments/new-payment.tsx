@@ -38,7 +38,7 @@ export function NewPayment({ setup }: { setup: PaymentSetup }) {
           <PaymentFlow key={key} {...setup} onDone={close} />
         </>
       ) : (
-        <ManualSaleForm reps={setup.reps} onDone={close} />
+        <ManualSaleForm reps={setup.reps} packages={setup.packages} handoffReady={setup.handoffReady} onDone={close} />
       )}
     </Card>
   );

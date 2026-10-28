@@ -258,7 +258,9 @@ All in Eastern time, for the chosen range (today / this week / this month / cust
   the dialer so the call stays connected). Admin can credit any rep.
 - Payment happens while the client is on the phone: **enter card now** (Stripe card box, plain-
   English decline reasons) or **payment link** (emailed via Resend if set up, or copied).
-- Prices are negotiated per deal: setup $0–599, monthly $199–699 (editable in settings).
+- The rep picks the package (Starter or Pro, read live from the Account Manager CRM, where owners
+  edit them). The monthly price fills in from the package and can be changed within $199–699.
+  The setup fee is whatever the rep negotiates, with no limit (AM CRM decision #46).
   First charge = setup + first month; then the monthly price automatically.
 - Products: every sale is filed under the two CRM products (monthly + setup fee).
 - After **Paid ✓**, the rep books onboarding in Calendly (`settings.onboarding_url`) before
@@ -271,6 +273,12 @@ All in Eastern time, for the chosen range (today / this week / this month / cust
   only), and the **Commissions** page per month with "Mark paid out".
 - The old pay site keeps running for existing clients; it and the CRM ignore each other's
   Stripe events.
+- **Handoff:** once Stripe confirms the first payment, the new client is sent to the Account
+  Manager CRM (via the ReviewSend server's `/handoff/sale`) with the package, setup fee, monthly
+  price, rep and notes. It creates the client, assigns the account manager with the fewest
+  clients, and creates an onboarding task. If sending fails, Stripe's retry sends it again, and
+  admins see "Not sent yet" with a "Try again" button on Payments. Settings: `AM_CRM_HANDOFF_URL`
+  and `AM_CRM_HANDOFF_KEY` in Vercel (the key matches `HANDOFF_SECRET` on the server).
 
 ### Payments (original notes)
 - The CRM takes over the payment step. On **Sold**, the rep enters setup fee and

@@ -5,7 +5,12 @@ import { Alert, Button, Field, Input, Select } from "@/components/ui";
 import { recordManualSale } from "./actions";
 
 /** Admin backup for a sale that was paid some other way. It counts right away. */
-export function ManualSaleForm({ reps, onDone }: { reps: { id: string; name: string }[]; onDone: () => void }) {
+export function ManualSaleForm({ reps, packages, handoffReady, onDone }: {
+  reps: { id: string; name: string }[];
+  packages: { id: string; name: string; monthly_price: number }[];
+  handoffReady: boolean;
+  onDone: () => void;
+}) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   return (
@@ -24,6 +29,7 @@ export function ManualSaleForm({ reps, onDone }: { reps: { id: string; name: str
           phone: String(f.get("phone") ?? ""),
           setupFee: Number(f.get("setupFee") || 0),
           monthlyPrice: Number(f.get("monthlyPrice") || 0),
+          packageId: String(f.get("packageId") ?? "") || undefined,
           notes: String(f.get("notes") ?? ""),
           paidOn: String(f.get("paidOn") ?? ""),
         });
@@ -33,6 +39,14 @@ export function ManualSaleForm({ reps, onDone }: { reps: { id: string; name: str
       }}
     >
       {error && <div className="sm:col-span-2"><Alert>{error}</Alert></div>}
+      {handoffReady && (
+        <Field label="Package" htmlFor="m-pk">
+          <Select id="m-pk" name="packageId" required defaultValue="">
+            <option value="" disabled>Pick the package…</option>
+            {packages.map((p) => <option key={p.id} value={p.id}>{p.name} (${p.monthly_price}/mo)</option>)}
+          </Select>
+        </Field>
+      )}
       <Field label="Business name" htmlFor="m-b"><Input id="m-b" name="businessName" required /></Field>
       <Field label="Client name" htmlFor="m-c"><Input id="m-c" name="contactName" required /></Field>
       <Field label="Email" htmlFor="m-e"><Input id="m-e" name="email" type="email" required /></Field>
@@ -43,7 +57,7 @@ export function ManualSaleForm({ reps, onDone }: { reps: { id: string; name: str
       <Field label="Paid on" htmlFor="m-d"><Input id="m-d" name="paidOn" type="date" /></Field>
       <Field label="Notes" htmlFor="m-n"><Input id="m-n" name="notes" /></Field>
       <p className="text-xs text-gray-500 sm:col-span-2">
-        The first-month commission is added now. Monthly residuals only come from Stripe payments, so they won&apos;t be tracked for this one.
+        The first-month commission is added now{handoffReady ? " and the client is sent to the Account Manager CRM" : ""}. Monthly residuals only come from Stripe payments, so they won&apos;t be tracked for this one.
       </p>
       <div className="sm:col-span-2"><Button type="submit" disabled={busy}>{busy ? "Saving…" : "Record sale"}</Button></div>
     </form>
